@@ -1,0 +1,44 @@
+"""Availability request and response schemas."""
+
+from datetime import date, datetime, time
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class AvailabilityBlockBase(BaseModel):
+    day_of_week: int | None = Field(default=None, ge=0, le=6)
+    start_time: time
+    end_time: time
+    is_recurring: bool = True
+    specific_date: date | None = None
+
+    @model_validator(mode="after")
+    def validate_block(self) -> "AvailabilityBlockBase":
+        if self.start_time >= self.end_time:
+            raise ValueError("start_time must be earlier than end_time")
+        if self.is_recurring and self.day_of_week is None:
+            raise ValueError("day_of_week is required for recurring blocks")
+        if not self.is_recurring and self.specific_date is None:
+            raise ValueError("specific_date is required for one-off blocks")
+        return self
+
+
+class AvailabilityBlockCreateRequest(AvailabilityBlockBase):
+    pass
+
+
+class AvailabilityBlockUpdateRequest(BaseModel):
+    day_of_week: int | None = Field(default=None, ge=0, le=6)
+    start_time: time | None = None
+    end_time: time | None = None
+    is_recurring: bool | None = None
+    specific_date: date | None = None
+
+
+class AvailabilityBlockResponse(AvailabilityBlockBase):
+    id: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

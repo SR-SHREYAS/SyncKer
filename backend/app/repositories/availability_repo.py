@@ -1,0 +1,2 @@
+"""Availability persistence queries."""
+
