@@ -1,4 +1,3 @@
-"""Shared FastAPI dependencies."""
 """Shared FastAPI dependencies.
 
 Dependencies are reusable objects or functions injected into routes.

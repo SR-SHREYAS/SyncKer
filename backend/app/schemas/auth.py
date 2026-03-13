@@ -34,3 +34,8 @@ class AuthUserResponse(BaseModel):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class AuthResponse(BaseModel):
+    user: AuthUserResponse
+    token: TokenResponse
