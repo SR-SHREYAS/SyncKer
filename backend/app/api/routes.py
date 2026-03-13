@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.auth import router as auth_router
 from app.api.planning import router as planning_router
+from app.api.scheduling import router as scheduling_router
 from app.api.skills import router as skills_router
 from app.api.users import router as users_router
 
@@ -20,3 +21,6 @@ api_router.include_router(skills_router)
 
 # Planning APIs
 api_router.include_router(planning_router)
+
+# Scheduling APIs
+api_router.include_router(scheduling_router)
