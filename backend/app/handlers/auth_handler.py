@@ -1,5 +1,6 @@
 """Auth request handlers."""
 
+from app.core.exceptions import AppError
 from app.schemas.auth import (
     AuthResponse,
     AuthUserResponse,
@@ -8,6 +9,9 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.services.auth_service import AuthService
+from app.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class AuthHandler:
@@ -18,20 +22,32 @@ class AuthHandler:
 
     def register(self, payload: RegisterRequest) -> AuthResponse:
         """Handle registration input and shape the auth response."""
-        result = self.auth_service.register(
-            email=payload.email,
-            username=payload.username,
-            password=payload.password,
-        )
-        return self._build_auth_response(result.user, result.access_token, result.expires_at)
+        try:
+            result = self.auth_service.register(
+                email=payload.email,
+                username=payload.username,
+                password=payload.password,
+            )
+            response = self._build_auth_response(result.user, result.access_token, result.expires_at)
+            logger.info("auth register handled for user_id=%s", result.user.id)
+            return response
+        except AppError:
+            logger.exception("auth register failed for email=%s", payload.email)
+            raise
 
     def login(self, payload: LoginRequest) -> AuthResponse:
         """Handle login input and shape the auth response."""
-        result = self.auth_service.login(
-            email=payload.email,
-            password=payload.password,
-        )
-        return self._build_auth_response(result.user, result.access_token, result.expires_at)
+        try:
+            result = self.auth_service.login(
+                email=payload.email,
+                password=payload.password,
+            )
+            response = self._build_auth_response(result.user, result.access_token, result.expires_at)
+            logger.info("auth login handled for user_id=%s", result.user.id)
+            return response
+        except AppError:
+            logger.exception("auth login failed for email=%s", payload.email)
+            raise
 
     def _build_auth_response(self, user: object, access_token: str, expires_at: object) -> AuthResponse:
         """Keep auth response mapping in one place for both flows."""

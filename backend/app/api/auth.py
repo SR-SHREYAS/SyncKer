@@ -2,11 +2,10 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
-from app.core.exceptions import AuthenticationError, ConflictError
 from app.handlers.auth_handler import AuthHandler
 from app.repositories.user_repo import UserRepository
 from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
@@ -32,10 +31,7 @@ def register(
     handler: Annotated[AuthHandler, Depends(get_auth_handler)],
 ) -> AuthResponse:
     """Register a new user account."""
-    try:
-        return handler.register(payload)
-    except ConflictError as exc:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    return handler.register(payload)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -44,7 +40,4 @@ def login(
     handler: Annotated[AuthHandler, Depends(get_auth_handler)],
 ) -> AuthResponse:
     """Authenticate a user and return an access token."""
-    try:
-        return handler.login(payload)
-    except AuthenticationError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+    return handler.login(payload)
