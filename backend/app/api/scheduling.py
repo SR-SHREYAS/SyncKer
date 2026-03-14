@@ -8,7 +8,10 @@ from sqlalchemy.orm import Session
 from app.ai.scheduler_engine import SchedulerEngine
 from app.core.dependencies import CurrentUserId, get_db
 from app.handlers.scheduling_handler import SchedulingHandler
+from app.repositories.availability_repo import AvailabilityRepository
+from app.repositories.routine_repo import RoutineRepository
 from app.repositories.suggestion_repo import SuggestionRepository
+from app.repositories.task_repo import TaskRepository
 from app.schemas.scheduling import (
     SessionSuggestionResponse,
     SuggestionGenerationRequest,
@@ -22,8 +25,17 @@ router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 def get_scheduling_handler(db: Annotated[Session, Depends(get_db)]) -> SchedulingHandler:
     """Build the scheduling dependency chain for route handlers."""
     suggestion_repo = SuggestionRepository(db)
+    task_repo = TaskRepository(db)
+    availability_repo = AvailabilityRepository(db)
+    routine_repo = RoutineRepository(db)
     scheduler_engine = SchedulerEngine()
-    scheduling_service = SchedulingService(suggestion_repo, scheduler_engine)
+    scheduling_service = SchedulingService(
+        suggestion_repo,
+        scheduler_engine,
+        task_repo,
+        availability_repo,
+        routine_repo,
+    )
     return SchedulingHandler(scheduling_service)
 
 

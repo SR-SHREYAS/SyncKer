@@ -4,7 +4,10 @@ from app.ai.scheduler_engine import SchedulerEngine
 from app.core.exceptions import NotFoundError
 from app.models.enums import SuggestionStatus
 from app.models.session_suggestion import SessionSuggestion
+from app.repositories.availability_repo import AvailabilityRepository
+from app.repositories.routine_repo import RoutineRepository
 from app.repositories.suggestion_repo import SuggestionRepository
+from app.repositories.task_repo import TaskRepository
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -17,9 +20,15 @@ class SchedulingService:
         self,
         suggestion_repo: SuggestionRepository,
         scheduler_engine: SchedulerEngine,
+        task_repo: TaskRepository,
+        availability_repo: AvailabilityRepository,
+        routine_repo: RoutineRepository,
     ) -> None:
         self.suggestion_repo = suggestion_repo
         self.scheduler_engine = scheduler_engine
+        self.task_repo = task_repo
+        self.availability_repo = availability_repo
+        self.routine_repo = routine_repo
 
     def generate_suggestion(
         self,
@@ -32,7 +41,13 @@ class SchedulingService:
         window_end_at: object,
         minimum_duration_minutes: int,
     ) -> SessionSuggestion:
-        """Generate and save one rule-based session suggestion."""
+        """Generate and save one planning-aware session suggestion."""
+        learner_tasks = self.task_repo.list_tasks_by_user(learner_user_id)
+        mentor_tasks = self.task_repo.list_tasks_by_user(mentor_user_id)
+        learner_availability_blocks = self.availability_repo.list_blocks_by_user(learner_user_id)
+        mentor_availability_blocks = self.availability_repo.list_blocks_by_user(mentor_user_id)
+        learner_routine_blocks = self.routine_repo.list_blocks_by_user(learner_user_id)
+        mentor_routine_blocks = self.routine_repo.list_blocks_by_user(mentor_user_id)
         result = self.scheduler_engine.generate(
             learner_user_id=learner_user_id,
             mentor_user_id=mentor_user_id,
@@ -40,6 +55,12 @@ class SchedulingService:
             minimum_duration_minutes=minimum_duration_minutes,
             window_start_at=window_start_at,
             window_end_at=window_end_at,
+            learner_tasks=learner_tasks,
+            mentor_tasks=mentor_tasks,
+            learner_availability_blocks=learner_availability_blocks,
+            mentor_availability_blocks=mentor_availability_blocks,
+            learner_routine_blocks=learner_routine_blocks,
+            mentor_routine_blocks=mentor_routine_blocks,
         )
         suggestion = self.suggestion_repo.create_suggestion(
             generated_for_user_id=generated_for_user_id,
