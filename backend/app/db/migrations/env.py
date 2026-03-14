@@ -10,6 +10,16 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import settings
 from app.db.base import Base
+from app.models.availability_block import AvailabilityBlock  # noqa: F401
+from app.models.profile import Profile  # noqa: F401
+from app.models.routine_block import RoutineBlock  # noqa: F401
+from app.models.session import Session  # noqa: F401
+from app.models.session_participant import SessionParticipant  # noqa: F401
+from app.models.session_suggestion import SessionSuggestion  # noqa: F401
+from app.models.skill import Skill  # noqa: F401
+from app.models.task import Task  # noqa: F401
+from app.models.user import User  # noqa: F401
+from app.models.user_skill import UserSkill  # noqa: F401
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

@@ -80,5 +80,6 @@ uvicorn app.main:app --reload --app-dir backend
 ## Notes
 
 - current scheduling logic is rule-based and planning-aware
+- local Postgres is mapped to `localhost:5433` to avoid common port conflicts on `5432`
 - real matching and stronger slot intersection can be added later without replacing the API shape
 - this repo is intentionally the backbone first, then later feature branches can grow around it

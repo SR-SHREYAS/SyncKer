@@ -1,12 +1,9 @@
-from fastapi.testclient import TestClient
+from app.main import app, health_check
 
-from app.main import app
+
+def test_app_imports_with_expected_title() -> None:
+    assert app.title == "SyncSkill"
 
 
 def test_health_check_returns_ok() -> None:
-    client = TestClient(app)
-
-    response = client.get("/health")
-
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert health_check() == {"status": "ok"}

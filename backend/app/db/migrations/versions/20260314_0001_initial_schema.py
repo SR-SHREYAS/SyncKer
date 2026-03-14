@@ -7,6 +7,7 @@ Create Date: 2026-03-14 00:00:00
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 
 revision = "20260314_0001"
@@ -15,30 +16,36 @@ branch_labels = None
 depends_on = None
 
 
-profile_role = sa.Enum("learner", "mentor", "both", name="profile_role")
-proficiency_level = sa.Enum("beginner", "intermediate", "advanced", name="proficiency_level")
-task_priority = sa.Enum("low", "medium", "high", name="task_priority")
-task_status = sa.Enum("pending", "in_progress", "completed", name="task_status")
-suggestion_status = sa.Enum("pending", "accepted", "rejected", "expired", name="suggestion_status")
-session_status = sa.Enum("scheduled", "completed", "cancelled", name="session_status")
-participant_role = sa.Enum("mentor", "learner", name="participant_role")
-participant_response_status = sa.Enum(
+profile_role = postgresql.ENUM("learner", "mentor", "both", name="profile_role", create_type=False)
+proficiency_level = postgresql.ENUM("beginner", "intermediate", "advanced", name="proficiency_level", create_type=False)
+task_priority = postgresql.ENUM("low", "medium", "high", name="task_priority", create_type=False)
+task_status = postgresql.ENUM("pending", "in_progress", "completed", name="task_status", create_type=False)
+suggestion_status = postgresql.ENUM("pending", "accepted", "rejected", "expired", name="suggestion_status", create_type=False)
+session_status = postgresql.ENUM("scheduled", "completed", "cancelled", name="session_status", create_type=False)
+participant_role = postgresql.ENUM("mentor", "learner", name="participant_role", create_type=False)
+participant_response_status = postgresql.ENUM(
     "invited",
     "accepted",
     "declined",
     name="participant_response_status",
+    create_type=False,
 )
 
 
 def upgrade() -> None:
-    profile_role.create(op.get_bind(), checkfirst=True)
-    proficiency_level.create(op.get_bind(), checkfirst=True)
-    task_priority.create(op.get_bind(), checkfirst=True)
-    task_status.create(op.get_bind(), checkfirst=True)
-    suggestion_status.create(op.get_bind(), checkfirst=True)
-    session_status.create(op.get_bind(), checkfirst=True)
-    participant_role.create(op.get_bind(), checkfirst=True)
-    participant_response_status.create(op.get_bind(), checkfirst=True)
+    sa.Enum("learner", "mentor", "both", name="profile_role").create(op.get_bind(), checkfirst=True)
+    sa.Enum("beginner", "intermediate", "advanced", name="proficiency_level").create(op.get_bind(), checkfirst=True)
+    sa.Enum("low", "medium", "high", name="task_priority").create(op.get_bind(), checkfirst=True)
+    sa.Enum("pending", "in_progress", "completed", name="task_status").create(op.get_bind(), checkfirst=True)
+    sa.Enum("pending", "accepted", "rejected", "expired", name="suggestion_status").create(op.get_bind(), checkfirst=True)
+    sa.Enum("scheduled", "completed", "cancelled", name="session_status").create(op.get_bind(), checkfirst=True)
+    sa.Enum("mentor", "learner", name="participant_role").create(op.get_bind(), checkfirst=True)
+    sa.Enum(
+        "invited",
+        "accepted",
+        "declined",
+        name="participant_response_status",
+    ).create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "users",

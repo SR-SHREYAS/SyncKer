@@ -8,12 +8,12 @@ class Settings(BaseSettings):
 
     app_name: str = "SyncSkill"
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/syncskill"
-    jwt_secret_key: str = "change-me"
+    jwt_secret_key: str = "change-me-please-use-a-long-secret-key"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(".env", "../.env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
     )

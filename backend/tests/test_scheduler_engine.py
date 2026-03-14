@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from app.ai.scheduler_engine import SchedulerEngine
@@ -6,7 +6,7 @@ from app.ai.scheduler_engine import SchedulerEngine
 
 def test_scheduler_engine_returns_slot_inside_window() -> None:
     engine = SchedulerEngine()
-    now = datetime.utcnow().replace(hour=9, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
 
     availability = [
         SimpleNamespace(
@@ -40,7 +40,7 @@ def test_scheduler_engine_returns_slot_inside_window() -> None:
 
 def test_scheduler_engine_scores_related_tasks_higher() -> None:
     engine = SchedulerEngine()
-    now = datetime.utcnow().replace(hour=9, minute=0, second=0, microsecond=0)
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
     availability = [
         SimpleNamespace(
             day_of_week=now.weekday(),
