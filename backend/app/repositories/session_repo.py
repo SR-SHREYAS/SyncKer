@@ -48,6 +48,15 @@ class SessionRepository:
         )
         return self.db.execute(stmt).unique().scalar_one_or_none()
 
+    def get_session_by_suggestion_id(self, suggestion_id: int) -> SessionModel | None:
+        """Fetch one session created from a given suggestion."""
+        stmt = (
+            select(SessionModel)
+            .options(joinedload(SessionModel.participants))
+            .where(SessionModel.session_suggestion_id == suggestion_id)
+        )
+        return self.db.execute(stmt).unique().scalar_one_or_none()
+
     def list_sessions_for_user(self, user_id: int) -> list[SessionModel]:
         """Return sessions created by one user."""
         stmt = (
