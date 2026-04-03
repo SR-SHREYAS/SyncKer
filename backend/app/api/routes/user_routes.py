@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import CurrentUserId, get_db
-from app.handlers.user_handler import UserHandler
+from app.api.handlers.user_handler import UserHandler
 from app.repositories.user_repo import UserRepository
 from app.schemas.profile import ProfileCreateRequest, ProfileResponse, ProfileUpdateRequest
 from app.schemas.user import UserResponse, UserUpdateRequest
@@ -28,7 +28,7 @@ def get_me(
     handler: Annotated[UserHandler, Depends(get_user_handler)],
 ) -> UserResponse:
     """Return the authenticated user's account data."""
-    return handler.get_me(current_user_id)
+    return handler.getCurrentUser(current_user_id)
 
 
 @router.patch("/me", response_model=UserResponse)
@@ -38,7 +38,7 @@ def update_me(
     handler: Annotated[UserHandler, Depends(get_user_handler)],
 ) -> UserResponse:
     """Update the authenticated user's account data."""
-    return handler.update_me(current_user_id, payload)
+    return handler.updateCurrentUser(current_user_id, payload)
 
 
 @router.get("/me/profile", response_model=ProfileResponse)
@@ -47,7 +47,7 @@ def get_profile(
     handler: Annotated[UserHandler, Depends(get_user_handler)],
 ) -> ProfileResponse:
     """Return the authenticated user's profile."""
-    return handler.get_profile(current_user_id)
+    return handler.getCurrentUserProfile(current_user_id)
 
 
 @router.post(
@@ -61,7 +61,7 @@ def create_profile(
     handler: Annotated[UserHandler, Depends(get_user_handler)],
 ) -> ProfileResponse:
     """Create the authenticated user's profile."""
-    return handler.create_profile(current_user_id, payload)
+    return handler.createCurrentUserProfile(current_user_id, payload)
 
 
 @router.patch("/me/profile", response_model=ProfileResponse)
@@ -71,4 +71,4 @@ def update_profile(
     handler: Annotated[UserHandler, Depends(get_user_handler)],
 ) -> ProfileResponse:
     """Update the authenticated user's profile."""
-    return handler.update_profile(current_user_id, payload)
+    return handler.updateCurrentUserProfile(current_user_id, payload)

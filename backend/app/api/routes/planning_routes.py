@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import CurrentUserId, get_db
-from app.handlers.planning_handler import PlanningHandler
+from app.api.handlers.planning_handler import PlanningHandler
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.task_repo import TaskRepository
@@ -42,7 +42,7 @@ def create_task(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> TaskResponse:
     """Create one task for the authenticated user."""
-    return handler.create_task(current_user_id, payload)
+    return handler.createPlanningTask(current_user_id, payload)
 
 
 @router.get("/tasks", response_model=list[TaskResponse])
@@ -51,7 +51,7 @@ def list_tasks(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> list[TaskResponse]:
     """Return tasks owned by the authenticated user."""
-    return handler.list_tasks(current_user_id)
+    return handler.listPlanningTasks(current_user_id)
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskResponse)
@@ -62,7 +62,7 @@ def update_task(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> TaskResponse:
     """Update one owned task."""
-    return handler.update_task(current_user_id, task_id, payload)
+    return handler.updatePlanningTask(current_user_id, task_id, payload)
 
 
 @router.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -72,7 +72,7 @@ def delete_task(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> Response:
     """Delete one owned task."""
-    handler.delete_task(current_user_id, task_id)
+    handler.deletePlanningTask(current_user_id, task_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -87,7 +87,7 @@ def create_availability_block(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> AvailabilityBlockResponse:
     """Create one availability block for the authenticated user."""
-    return handler.create_availability_block(current_user_id, payload)
+    return handler.createAvailabilityBlock(current_user_id, payload)
 
 
 @router.get("/availability", response_model=list[AvailabilityBlockResponse])
@@ -96,7 +96,7 @@ def list_availability_blocks(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> list[AvailabilityBlockResponse]:
     """Return availability blocks owned by the authenticated user."""
-    return handler.list_availability_blocks(current_user_id)
+    return handler.listAvailabilityBlocks(current_user_id)
 
 
 @router.patch("/availability/{block_id}", response_model=AvailabilityBlockResponse)
@@ -107,7 +107,7 @@ def update_availability_block(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> AvailabilityBlockResponse:
     """Update one owned availability block."""
-    return handler.update_availability_block(current_user_id, block_id, payload)
+    return handler.updateAvailabilityBlock(current_user_id, block_id, payload)
 
 
 @router.delete("/availability/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -117,7 +117,7 @@ def delete_availability_block(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> Response:
     """Delete one owned availability block."""
-    handler.delete_availability_block(current_user_id, block_id)
+    handler.deleteAvailabilityBlock(current_user_id, block_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -128,7 +128,7 @@ def create_routine_block(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> RoutineBlockResponse:
     """Create one routine block for the authenticated user."""
-    return handler.create_routine_block(current_user_id, payload)
+    return handler.createRoutineBlock(current_user_id, payload)
 
 
 @router.get("/routine", response_model=list[RoutineBlockResponse])
@@ -137,7 +137,7 @@ def list_routine_blocks(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> list[RoutineBlockResponse]:
     """Return routine blocks owned by the authenticated user."""
-    return handler.list_routine_blocks(current_user_id)
+    return handler.listRoutineBlocks(current_user_id)
 
 
 @router.patch("/routine/{block_id}", response_model=RoutineBlockResponse)
@@ -148,7 +148,7 @@ def update_routine_block(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> RoutineBlockResponse:
     """Update one owned routine block."""
-    return handler.update_routine_block(current_user_id, block_id, payload)
+    return handler.updateRoutineBlock(current_user_id, block_id, payload)
 
 
 @router.delete("/routine/{block_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -158,5 +158,5 @@ def delete_routine_block(
     handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
 ) -> Response:
     """Delete one owned routine block."""
-    handler.delete_routine_block(current_user_id, block_id)
+    handler.deleteRoutineBlock(current_user_id, block_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

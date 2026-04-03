@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_db
-from app.handlers.auth_handler import AuthHandler
+from app.api.handlers.auth_handler import AuthHandler
 from app.repositories.user_repo import UserRepository
 from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
 from app.services.auth_service import AuthService
@@ -31,7 +31,7 @@ def register(
     handler: Annotated[AuthHandler, Depends(get_auth_handler)],
 ) -> AuthResponse:
     """Register a new user account."""
-    return handler.register(payload)
+    return handler.registerUser(payload)
 
 
 @router.post("/login", response_model=AuthResponse)
@@ -40,4 +40,4 @@ def login(
     handler: Annotated[AuthHandler, Depends(get_auth_handler)],
 ) -> AuthResponse:
     """Authenticate a user and return an access token."""
-    return handler.login(payload)
+    return handler.loginUser(payload)

@@ -26,7 +26,7 @@ class SessionService:
         self.session_repo = session_repo
         self.suggestion_repo = suggestion_repo
 
-    def create_from_suggestion(self, user_id: int, *, suggestion_id: int, title: str) -> Session:
+    def CreateSessionFromSuggestion(self, user_id: int, *, suggestion_id: int, title: str) -> Session:
         """Create a booked session from one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
         if suggestion is None or suggestion.generated_for_user_id != user_id:
@@ -71,13 +71,13 @@ class SessionService:
         logger.info("session create service completed for user_id=%s session_id=%s", user_id, session.id)
         return session
 
-    def list_sessions(self, user_id: int) -> list[Session]:
+    def ListSessions(self, user_id: int) -> list[Session]:
         """Return sessions created by the current user."""
         sessions = self.session_repo.list_sessions_for_user(user_id)
         logger.info("session list service completed for user_id=%s count=%s", user_id, len(sessions))
         return sessions
 
-    def get_session(self, user_id: int, session_id: int) -> Session:
+    def GetSessionById(self, user_id: int, session_id: int) -> Session:
         """Return one owned session."""
         session = self.session_repo.get_session_by_id(session_id)
         if session is None or session.created_by_user_id != user_id:

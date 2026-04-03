@@ -25,7 +25,7 @@ class UserService:
     def __init__(self, user_repo: UserRepository) -> None:
         self.user_repo = user_repo
 
-    def get_user_details(self, user_id: int) -> UserDetailsResult:
+    def GetCurrentUserDetails(self, user_id: int) -> UserDetailsResult:
         """Return one user with its profile data."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
@@ -34,7 +34,7 @@ class UserService:
         logger.info("user details service completed for user_id=%s", user_id)
         return UserDetailsResult(user=user, profile=user.profile)
 
-    def update_user(self, user_id: int, *, username: str | None = None) -> UserDetailsResult:
+    def UpdateCurrentUser(self, user_id: int, *, username: str | None = None) -> UserDetailsResult:
         """Update allowed user fields after validation."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
@@ -55,7 +55,7 @@ class UserService:
         logger.info("user update service completed for user_id=%s", user_id)
         return UserDetailsResult(user=user, profile=user.profile)
 
-    def create_profile(
+    def CreateCurrentUserProfile(
         self,
         user_id: int,
         *,
@@ -85,7 +85,7 @@ class UserService:
         logger.info("profile create service completed for user_id=%s", user_id)
         return profile
 
-    def update_profile(
+    def UpdateCurrentUserProfile(
         self,
         user_id: int,
         *,

@@ -25,7 +25,7 @@ class PlanningService:
         self.availability_repo = availability_repo
         self.routine_repo = routine_repo
 
-    def create_task(
+    def CreatePlanningTask(
         self,
         *,
         user_id: int,
@@ -51,13 +51,13 @@ class PlanningService:
         logger.info("task create service completed for user_id=%s task_id=%s", user_id, task.id)
         return task
 
-    def list_tasks(self, user_id: int) -> list[Task]:
+    def ListPlanningTasks(self, user_id: int) -> list[Task]:
         """Return all tasks owned by the current user."""
         tasks = self.task_repo.list_tasks_by_user(user_id)
         logger.info("task list service completed for user_id=%s count=%s", user_id, len(tasks))
         return tasks
 
-    def update_task(self, user_id: int, task_id: int, **updates: object) -> Task:
+    def UpdatePlanningTask(self, user_id: int, task_id: int, **updates: object) -> Task:
         """Update one owned task."""
         task = self.task_repo.get_task_by_id(task_id)
         if task is None or task.user_id != user_id:
@@ -71,7 +71,7 @@ class PlanningService:
         logger.info("task update service completed for user_id=%s task_id=%s", user_id, task_id)
         return task
 
-    def delete_task(self, user_id: int, task_id: int) -> None:
+    def DeletePlanningTask(self, user_id: int, task_id: int) -> None:
         """Delete one owned task."""
         task = self.task_repo.get_task_by_id(task_id)
         if task is None or task.user_id != user_id:
@@ -81,7 +81,7 @@ class PlanningService:
         self.task_repo.delete_task(task)
         logger.info("task delete service completed for user_id=%s task_id=%s", user_id, task_id)
 
-    def create_availability_block(
+    def CreateAvailabilityBlock(
         self,
         *,
         user_id: int,
@@ -107,7 +107,7 @@ class PlanningService:
         )
         return block
 
-    def list_availability_blocks(self, user_id: int) -> list[AvailabilityBlock]:
+    def ListAvailabilityBlocks(self, user_id: int) -> list[AvailabilityBlock]:
         """Return all availability blocks owned by the current user."""
         blocks = self.availability_repo.list_blocks_by_user(user_id)
         logger.info(
@@ -117,7 +117,7 @@ class PlanningService:
         )
         return blocks
 
-    def update_availability_block(self, user_id: int, block_id: int, **updates: object) -> AvailabilityBlock:
+    def UpdateAvailabilityBlock(self, user_id: int, block_id: int, **updates: object) -> AvailabilityBlock:
         """Update one owned availability block."""
         block = self.availability_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
@@ -139,7 +139,7 @@ class PlanningService:
         )
         return block
 
-    def delete_availability_block(self, user_id: int, block_id: int) -> None:
+    def DeleteAvailabilityBlock(self, user_id: int, block_id: int) -> None:
         """Delete one owned availability block."""
         block = self.availability_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
@@ -157,7 +157,7 @@ class PlanningService:
             block_id,
         )
 
-    def create_routine_block(
+    def CreateRoutineBlock(
         self,
         *,
         user_id: int,
@@ -181,13 +181,13 @@ class PlanningService:
         logger.info("routine create service completed for user_id=%s block_id=%s", user_id, block.id)
         return block
 
-    def list_routine_blocks(self, user_id: int) -> list[RoutineBlock]:
+    def ListRoutineBlocks(self, user_id: int) -> list[RoutineBlock]:
         """Return all routine blocks owned by the current user."""
         blocks = self.routine_repo.list_blocks_by_user(user_id)
         logger.info("routine list service completed for user_id=%s count=%s", user_id, len(blocks))
         return blocks
 
-    def update_routine_block(self, user_id: int, block_id: int, **updates: object) -> RoutineBlock:
+    def UpdateRoutineBlock(self, user_id: int, block_id: int, **updates: object) -> RoutineBlock:
         """Update one owned routine block."""
         block = self.routine_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
@@ -205,7 +205,7 @@ class PlanningService:
         logger.info("routine update service completed for user_id=%s block_id=%s", user_id, block_id)
         return block
 
-    def delete_routine_block(self, user_id: int, block_id: int) -> None:
+    def DeleteRoutineBlock(self, user_id: int, block_id: int) -> None:
         """Delete one owned routine block."""
         block = self.routine_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:

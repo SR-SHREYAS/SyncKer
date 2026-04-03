@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import CurrentUserId, get_db
-from app.handlers.session_handler import SessionHandler
+from app.api.handlers.session_handler import SessionHandler
 from app.repositories.session_repo import SessionRepository
 from app.repositories.suggestion_repo import SuggestionRepository
 from app.schemas.session import (
@@ -38,7 +38,7 @@ def create_session_from_suggestion(
     handler: Annotated[SessionHandler, Depends(get_session_handler)],
 ) -> SessionDetailResponse:
     """Create one booked session from a suggestion."""
-    return handler.create_from_suggestion(current_user_id, payload)
+    return handler.createSessionFromSuggestion(current_user_id, payload)
 
 
 @router.get("", response_model=list[SessionResponse])
@@ -47,7 +47,7 @@ def list_sessions(
     handler: Annotated[SessionHandler, Depends(get_session_handler)],
 ) -> list[SessionResponse]:
     """Return sessions created by the authenticated user."""
-    return handler.list_sessions(current_user_id)
+    return handler.listSessions(current_user_id)
 
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
@@ -57,4 +57,4 @@ def get_session(
     handler: Annotated[SessionHandler, Depends(get_session_handler)],
 ) -> SessionDetailResponse:
     """Return one owned session with participants."""
-    return handler.get_session(current_user_id, session_id)
+    return handler.getSessionById(current_user_id, session_id)

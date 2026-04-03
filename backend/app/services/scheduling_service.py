@@ -30,7 +30,7 @@ class SchedulingService:
         self.availability_repo = availability_repo
         self.routine_repo = routine_repo
 
-    def generate_suggestion(
+    def GenerateSchedulingSuggestion(
         self,
         *,
         generated_for_user_id: int,
@@ -80,13 +80,13 @@ class SchedulingService:
         )
         return suggestion
 
-    def list_suggestions(self, user_id: int) -> list[SessionSuggestion]:
+    def ListSchedulingSuggestions(self, user_id: int) -> list[SessionSuggestion]:
         """Return suggestions generated for the current user."""
         suggestions = self.suggestion_repo.list_suggestions_for_user(user_id)
         logger.info("scheduling list service completed for user_id=%s count=%s", user_id, len(suggestions))
         return suggestions
 
-    def update_suggestion_status(
+    def UpdateSchedulingSuggestionStatus(
         self,
         user_id: int,
         suggestion_id: int,

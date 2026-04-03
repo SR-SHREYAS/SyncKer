@@ -27,7 +27,7 @@ class AuthService:
     def __init__(self, user_repo: UserRepository) -> None:
         self.user_repo = user_repo
 
-    def register(self, *, email: str, username: str, password: str) -> AuthResult:
+    def RegisterUser(self, *, email: str, username: str, password: str) -> AuthResult:
         """Create a user account, then issue an access token."""
         if self.user_repo.get_by_email(email):
             logger.error("auth register blocked: email already exists for email=%s", email)
@@ -47,7 +47,7 @@ class AuthService:
         logger.info("auth register service completed for user_id=%s", user.id)
         return AuthResult(user=user, access_token=access_token, expires_at=expires_at)
 
-    def login(self, *, email: str, password: str) -> AuthResult:
+    def LoginUser(self, *, email: str, password: str) -> AuthResult:
         """Verify credentials, then issue an access token."""
         user = self.user_repo.get_by_email(email)
         if user is None:

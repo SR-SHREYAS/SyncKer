@@ -17,6 +17,12 @@ class ConflictError(AppError):
     status_code = 409
 
 
+class BadRequestError(AppError):
+    """Raised when request content is empty or semantically invalid."""
+
+    status_code = 400
+
+
 class AuthenticationError(AppError):
     """Raised when login credentials or auth state are invalid."""
 

@@ -15,7 +15,7 @@ class SkillService:
     def __init__(self, skill_repo: SkillRepository) -> None:
         self.skill_repo = skill_repo
 
-    def create_skill(self, *, name: str, slug: str, description: str | None = None) -> Skill:
+    def CreateSkillCatalogEntry(self, *, name: str, slug: str, description: str | None = None) -> Skill:
         """Create a new skill if its slug is still available."""
         existing_skill = self.skill_repo.get_skill_by_slug(slug)
         if existing_skill is not None:
@@ -26,13 +26,13 @@ class SkillService:
         logger.info("skill create service completed for skill_id=%s", skill.id)
         return skill
 
-    def list_skills(self) -> list[Skill]:
+    def ListSkillCatalog(self) -> list[Skill]:
         """Return the current skill catalog."""
         skills = self.skill_repo.list_skills()
         logger.info("skill list service completed with count=%s", len(skills))
         return skills
 
-    def attach_skill_to_user(
+    def AttachSkillToUser(
         self,
         *,
         user_id: int,
@@ -70,7 +70,7 @@ class SkillService:
         )
         return user_skill
 
-    def list_user_skills(self, user_id: int) -> list[UserSkill]:
+    def ListUserSkills(self, user_id: int) -> list[UserSkill]:
         """Return all skills linked to one user."""
         user_skills = self.skill_repo.list_user_skills(user_id)
         logger.info("user skill list service completed for user_id=%s count=%s", user_id, len(user_skills))

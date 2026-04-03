@@ -23,7 +23,8 @@ The backend follows a layered traceable flow:
 Main backend folders:
 
 - `backend/app/api`
-- `backend/app/handlers`
+- `backend/app/api/routes`
+- `backend/app/api/handlers`
 - `backend/app/services`
 - `backend/app/repositories`
 - `backend/app/models`

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.ai.scheduler_engine import SchedulerEngine
 from app.core.dependencies import CurrentUserId, get_db
-from app.handlers.scheduling_handler import SchedulingHandler
+from app.api.handlers.scheduling_handler import SchedulingHandler
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.suggestion_repo import SuggestionRepository
@@ -50,7 +50,7 @@ def generate_suggestion(
     handler: Annotated[SchedulingHandler, Depends(get_scheduling_handler)],
 ) -> SessionSuggestionResponse:
     """Generate one session suggestion for the authenticated user."""
-    return handler.generate_suggestion(current_user_id, payload)
+    return handler.generateSchedulingSuggestion(current_user_id, payload)
 
 
 @router.get("/suggestions", response_model=list[SessionSuggestionResponse])
@@ -59,7 +59,7 @@ def list_suggestions(
     handler: Annotated[SchedulingHandler, Depends(get_scheduling_handler)],
 ) -> list[SessionSuggestionResponse]:
     """Return suggestions generated for the authenticated user."""
-    return handler.list_suggestions(current_user_id)
+    return handler.listSchedulingSuggestions(current_user_id)
 
 
 @router.patch("/suggestions/{suggestion_id}", response_model=SessionSuggestionResponse)
@@ -70,4 +70,4 @@ def update_suggestion_status(
     handler: Annotated[SchedulingHandler, Depends(get_scheduling_handler)],
 ) -> SessionSuggestionResponse:
     """Update the status of one owned suggestion."""
-    return handler.update_suggestion_status(current_user_id, suggestion_id, payload)
+    return handler.updateSchedulingSuggestionStatus(current_user_id, suggestion_id, payload)
