@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import TaskPriority, TaskStatus
 
@@ -15,6 +15,14 @@ class TaskBase(BaseModel):
     estimated_minutes: int = Field(ge=15, le=1440)
     deadline_at: datetime | None = None
     skill_id: int | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title_not_blank(cls, value: str) -> str:
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("title must not be empty")
+        return normalized_value
 
 
 class TaskCreateRequest(TaskBase):
@@ -29,6 +37,16 @@ class TaskUpdateRequest(BaseModel):
     estimated_minutes: int | None = Field(default=None, ge=15, le=1440)
     deadline_at: datetime | None = None
     skill_id: int | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_optional_title_not_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("title must not be empty")
+        return normalized_value
 
 
 class TaskResponse(TaskBase):

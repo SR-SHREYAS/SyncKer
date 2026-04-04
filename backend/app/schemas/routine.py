@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class RoutineBlockBase(BaseModel):
@@ -12,6 +12,14 @@ class RoutineBlockBase(BaseModel):
     end_time: time
     is_recurring: bool = True
     specific_date: date | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_title_not_blank(cls, value: str) -> str:
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("title must not be empty")
+        return normalized_value
 
     @model_validator(mode="after")
     def validate_block(self) -> "RoutineBlockBase":
@@ -35,6 +43,16 @@ class RoutineBlockUpdateRequest(BaseModel):
     end_time: time | None = None
     is_recurring: bool | None = None
     specific_date: date | None = None
+
+    @field_validator("title")
+    @classmethod
+    def validate_optional_title_not_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("title must not be empty")
+        return normalized_value
 
 
 class RoutineBlockResponse(RoutineBlockBase):

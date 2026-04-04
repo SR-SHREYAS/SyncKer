@@ -27,6 +27,16 @@ def ensure_optional_non_empty_text(value: str | None, *, field_name: str) -> Non
     ensure_non_empty_text(value, field_name=field_name)
 
 
+def normalize_optional_text_to_none(value: str | None) -> str | None:
+    """Strip optional text and collapse empty/blank values to None."""
+    if value is None:
+        return None
+    normalized_value = value.strip()
+    if not normalized_value:
+        return None
+    return normalized_value
+
+
 def ensure_payload_has_updates(payload: BaseModel, *, field_names: tuple[str, ...]) -> None:
     """Ensure update requests include at least one field to modify."""
     if not any(getattr(payload, field_name) is not None for field_name in field_names):

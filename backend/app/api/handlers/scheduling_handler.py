@@ -9,7 +9,6 @@ from app.schemas.scheduling import (
 from app.services.scheduling_service import SchedulingService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_non_empty_text,
     ensure_optional_id_is_positive,
     ensure_participant_ids_list,
     ensure_positive_id,
@@ -33,7 +32,6 @@ class SchedulingHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
-            ensure_non_empty_text(payload.collaboration_title, field_name="collaboration_title")
             ensure_participant_ids_list(
                 payload.participant_user_ids,
                 context="suggestion generation",

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.enums import ParticipantResponseStatus, ParticipantRole, SessionStatus
 
@@ -10,6 +10,16 @@ from app.models.enums import ParticipantResponseStatus, ParticipantRole, Session
 class SessionCreateFromSuggestionRequest(BaseModel):
     suggestion_id: int
     title: str | None = Field(default=None, min_length=2, max_length=180)
+
+    @field_validator("title")
+    @classmethod
+    def validate_optional_title_not_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        normalized_value = value.strip()
+        if not normalized_value:
+            raise ValueError("title must not be empty")
+        return normalized_value
 
 
 class SessionParticipantResponse(BaseModel):

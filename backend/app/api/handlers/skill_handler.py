@@ -10,8 +10,6 @@ from app.schemas.skill import (
 from app.services.skill_service import SkillService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_non_empty_text,
-    ensure_optional_non_empty_text,
     ensure_positive_id,
 )
 
@@ -27,19 +25,10 @@ class SkillHandler:
     def createSkillCatalogEntry(self, payload: SkillCreateRequest) -> SkillResponse:
         """Handle skill creation requests."""
         try:
-            ensure_non_empty_text(payload.name, field_name="name")
-            ensure_non_empty_text(payload.slug, field_name="slug")
-            normalized_description = payload.description
-            if normalized_description is not None:
-                normalized_description = normalized_description.strip()
-                if not normalized_description:
-                    normalized_description = None
-            ensure_optional_non_empty_text(normalized_description, field_name="description")
-
             created_skill = self.skill_service.CreateSkillCatalogEntry(
                 name=payload.name,
                 slug=payload.slug,
-                description=normalized_description,
+                description=payload.description,
             )
             skill_response = SkillResponse.model_validate(created_skill)
             logger.info("skill createSkillCatalogEntry handled for skill_id=%s", created_skill.id)

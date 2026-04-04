@@ -10,7 +10,6 @@ from app.schemas.session import (
 from app.services.session_service import SessionService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_non_empty_text,
     ensure_positive_id,
 )
 
@@ -32,8 +31,6 @@ class SessionHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(payload.suggestion_id, field_name="suggestion_id")
-            if payload.title is not None:
-                ensure_non_empty_text(payload.title, field_name="title")
 
             created_session = self.session_service.CreateSessionFromSuggestion(
                 user_id,

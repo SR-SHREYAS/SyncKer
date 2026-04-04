@@ -21,9 +21,17 @@ def test_ensure_positive_id_rejects_non_positive() -> None:
         ensure_positive_id(0, field_name="user_id")
 
 
+def test_ensure_positive_id_allows_positive_value() -> None:
+    ensure_positive_id(1, field_name="user_id")
+
+
 def test_ensure_non_empty_text_rejects_whitespace() -> None:
     with pytest.raises(BadRequestError):
         ensure_non_empty_text("   ", field_name="title")
+
+
+def test_ensure_non_empty_text_allows_non_empty_value() -> None:
+    ensure_non_empty_text("Title", field_name="title")
 
 
 def test_ensure_optional_non_empty_text_allows_none() -> None:

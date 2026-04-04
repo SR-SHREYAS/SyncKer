@@ -10,7 +10,6 @@ from app.schemas.auth import (
 )
 from app.services.auth_service import AuthService
 from app.utils.logger import get_logger
-from app.utils.request_validation import ensure_non_empty_text
 
 logger = get_logger(__name__)
 
@@ -24,9 +23,6 @@ class AuthHandler:
     def registerUser(self, payload: RegisterRequest) -> AuthResponse:
         """Handle registration input and shape the auth response."""
         try:
-            ensure_non_empty_text(payload.email, field_name="email")
-            ensure_non_empty_text(payload.username, field_name="username")
-            ensure_non_empty_text(payload.password, field_name="password")
             auth_result = self.auth_service.RegisterUser(
                 email=payload.email,
                 username=payload.username,
@@ -46,8 +42,6 @@ class AuthHandler:
     def loginUser(self, payload: LoginRequest) -> AuthResponse:
         """Handle login input and shape the auth response."""
         try:
-            ensure_non_empty_text(payload.email, field_name="email")
-            ensure_non_empty_text(payload.password, field_name="password")
             auth_result = self.auth_service.LoginUser(
                 email=payload.email,
                 password=payload.password,
