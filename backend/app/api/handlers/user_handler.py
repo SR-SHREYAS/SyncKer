@@ -7,6 +7,7 @@ from app.services.user_service import UserService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
     ensure_non_empty_text,
+    ensure_optional_non_empty_text,
     ensure_payload_has_updates,
     ensure_positive_id,
 )
@@ -24,10 +25,10 @@ class UserHandler:
         """Return the current user's main account fields."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            result = self.user_service.GetCurrentUserDetails(user_id)
-            response = UserResponse.model_validate(result.user)
+            user_details = self.user_service.GetCurrentUserDetails(user_id)
+            user_response = UserResponse.model_validate(user_details.user)
             logger.info("user getCurrentUser handled for user_id=%s", user_id)
-            return response
+            return user_response
         except AppError:
             logger.exception("user getCurrentUser failed for user_id=%s", user_id)
             raise
@@ -37,16 +38,15 @@ class UserHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_payload_has_updates(payload, field_names=("username",))
-            if payload.username is not None:
-                ensure_non_empty_text(payload.username, field_name="username")
+            ensure_optional_non_empty_text(payload.username, field_name="username")
 
-            result = self.user_service.UpdateCurrentUser(
+            updated_user_details = self.user_service.UpdateCurrentUser(
                 user_id,
                 username=payload.username,
             )
-            response = UserResponse.model_validate(result.user)
+            user_response = UserResponse.model_validate(updated_user_details.user)
             logger.info("user updateCurrentUser handled for user_id=%s", user_id)
-            return response
+            return user_response
         except AppError:
             logger.exception("user updateCurrentUser failed for user_id=%s", user_id)
             raise
@@ -55,12 +55,12 @@ class UserHandler:
         """Return the current user's profile."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            result = self.user_service.GetCurrentUserDetails(user_id)
-            if result.profile is None:
+            user_details = self.user_service.GetCurrentUserDetails(user_id)
+            if user_details.profile is None:
                 raise NotFoundError("profile not found")
-            response = ProfileResponse.model_validate(result.profile)
+            profile_response = ProfileResponse.model_validate(user_details.profile)
             logger.info("user getCurrentUserProfile handled for user_id=%s", user_id)
-            return response
+            return profile_response
         except AppError:
             logger.exception("user getCurrentUserProfile failed for user_id=%s", user_id)
             raise
@@ -79,9 +79,9 @@ class UserHandler:
                 role=payload.role,
                 timezone=payload.timezone,
             )
-            response = ProfileResponse.model_validate(profile)
+            profile_response = ProfileResponse.model_validate(profile)
             logger.info("user createCurrentUserProfile handled for user_id=%s", user_id)
-            return response
+            return profile_response
         except AppError:
             logger.exception("user createCurrentUserProfile failed for user_id=%s", user_id)
             raise
@@ -94,21 +94,19 @@ class UserHandler:
                 payload,
                 field_names=("full_name", "bio", "role", "timezone"),
             )
-            if payload.full_name is not None:
-                ensure_non_empty_text(payload.full_name, field_name="full_name")
-            if payload.timezone is not None:
-                ensure_non_empty_text(payload.timezone, field_name="timezone")
+            ensure_optional_non_empty_text(payload.full_name, field_name="full_name")
+            ensure_optional_non_empty_text(payload.timezone, field_name="timezone")
 
-            profile = self.user_service.UpdateCurrentUserProfile(
+            updated_profile = self.user_service.UpdateCurrentUserProfile(
                 user_id,
                 full_name=payload.full_name,
                 bio=payload.bio,
                 role=payload.role,
                 timezone=payload.timezone,
             )
-            response = ProfileResponse.model_validate(profile)
+            profile_response = ProfileResponse.model_validate(updated_profile)
             logger.info("user updateCurrentUserProfile handled for user_id=%s", user_id)
-            return response
+            return profile_response
         except AppError:
             logger.exception("user updateCurrentUserProfile failed for user_id=%s", user_id)
             raise

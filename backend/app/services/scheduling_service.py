@@ -55,7 +55,7 @@ class SchedulingService:
             availability_blocks.extend(self.availability_repo.list_blocks_by_user(participant_user_id))
             routine_blocks.extend(self.routine_repo.list_blocks_by_user(participant_user_id))
 
-        result = self.scheduler_engine.generate(
+        scheduling_candidate = self.scheduler_engine.generate(
             participant_user_ids=participant_user_ids,
             skill_id=resolved_skill_id,
             minimum_duration_minutes=minimum_duration_minutes,
@@ -75,11 +75,11 @@ class SchedulingService:
             participant_user_ids=participant_user_ids,
             collaboration_title=collaboration_title,
             skill_id=resolved_skill_id,
-            suggested_start_at=result["suggested_start_at"],
-            suggested_end_at=result["suggested_end_at"],
-            score=result["score"],
+            suggested_start_at=scheduling_candidate["suggested_start_at"],
+            suggested_end_at=scheduling_candidate["suggested_end_at"],
+            score=scheduling_candidate["score"],
             status=SuggestionStatus.PENDING,
-            explanation=result["explanation"],
+            explanation=scheduling_candidate["explanation"],
         )
         logger.info(
             "scheduling generate service completed for user_id=%s suggestion_id=%s",

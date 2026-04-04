@@ -20,6 +20,13 @@ def ensure_non_empty_text(value: str, *, field_name: str) -> None:
         raise BadRequestError(f"{field_name} cannot be empty")
 
 
+def ensure_optional_non_empty_text(value: str | None, *, field_name: str) -> None:
+    """Ensure optional string fields are non-empty when provided."""
+    if value is None:
+        return
+    ensure_non_empty_text(value, field_name=field_name)
+
+
 def ensure_payload_has_updates(payload: BaseModel, *, field_names: tuple[str, ...]) -> None:
     """Ensure update requests include at least one field to modify."""
     if not any(getattr(payload, field_name) is not None for field_name in field_names):

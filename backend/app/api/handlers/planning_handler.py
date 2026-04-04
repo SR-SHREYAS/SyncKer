@@ -15,7 +15,9 @@ from app.schemas.task import TaskCreateRequest, TaskResponse, TaskUpdateRequest
 from app.services.planning_service import PlanningService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
+    ensure_non_empty_text,
     ensure_optional_id_is_positive,
+    ensure_optional_non_empty_text,
     ensure_payload_has_updates,
     ensure_positive_id,
     ensure_time_range,
@@ -34,9 +36,10 @@ class PlanningHandler:
         """Handle task creation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
+            ensure_non_empty_text(payload.title, field_name="title")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
 
-            task = self.planning_service.CreatePlanningTask(
+            created_task = self.planning_service.CreatePlanningTask(
                 user_id=user_id,
                 title=payload.title,
                 description=payload.description,
@@ -46,9 +49,9 @@ class PlanningHandler:
                 deadline_at=payload.deadline_at,
                 skill_id=payload.skill_id,
             )
-            response = TaskResponse.model_validate(task)
-            logger.info("task createPlanningTask handled for user_id=%s task_id=%s", user_id, task.id)
-            return response
+            task_response = TaskResponse.model_validate(created_task)
+            logger.info("task createPlanningTask handled for user_id=%s task_id=%s", user_id, created_task.id)
+            return task_response
         except AppError:
             logger.exception("task createPlanningTask failed for user_id=%s", user_id)
             raise
@@ -82,9 +85,10 @@ class PlanningHandler:
                     "skill_id",
                 ),
             )
+            ensure_optional_non_empty_text(payload.title, field_name="title")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
 
-            task = self.planning_service.UpdatePlanningTask(
+            updated_task = self.planning_service.UpdatePlanningTask(
                 user_id,
                 task_id,
                 title=payload.title,
@@ -95,9 +99,9 @@ class PlanningHandler:
                 deadline_at=payload.deadline_at,
                 skill_id=payload.skill_id,
             )
-            response = TaskResponse.model_validate(task)
+            task_response = TaskResponse.model_validate(updated_task)
             logger.info("task updatePlanningTask handled for user_id=%s task_id=%s", user_id, task_id)
-            return response
+            return task_response
         except AppError:
             logger.exception("task updatePlanningTask failed for user_id=%s task_id=%s", user_id, task_id)
             raise
@@ -204,6 +208,7 @@ class PlanningHandler:
         """Handle routine block creation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
+            ensure_non_empty_text(payload.title, field_name="title")
             block = self.planning_service.CreateRoutineBlock(
                 user_id=user_id,
                 title=payload.title,
@@ -246,6 +251,7 @@ class PlanningHandler:
                 payload,
                 field_names=("title", "day_of_week", "start_time", "end_time", "is_recurring", "specific_date"),
             )
+            ensure_optional_non_empty_text(payload.title, field_name="title")
             ensure_time_range(
                 start_time=payload.start_time,
                 end_time=payload.end_time,
