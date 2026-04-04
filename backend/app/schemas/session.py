@@ -2,24 +2,20 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from app.models.enums import ParticipantResponseStatus, ParticipantRole, SessionStatus
+from app.utils.request_validation import normalize_optional_text
 
 
 class SessionCreateFromSuggestionRequest(BaseModel):
     suggestion_id: int
     title: str | None = Field(default=None, min_length=2, max_length=180)
 
-    @field_validator("title")
+    @field_validator("title", mode="before")
     @classmethod
-    def validate_optional_title_not_blank(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        normalized_value = value.strip()
-        if not normalized_value:
-            raise ValueError("title must not be empty")
-        return normalized_value
+    def normalize_optional_title_not_blank(cls, value: object, info: ValidationInfo) -> object:
+        return normalize_optional_text(value, field_name=info.field_name)
 
 
 class SessionParticipantResponse(BaseModel):

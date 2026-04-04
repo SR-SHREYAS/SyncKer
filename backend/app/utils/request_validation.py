@@ -27,10 +27,40 @@ def ensure_optional_non_empty_text(value: str | None, *, field_name: str) -> Non
     ensure_non_empty_text(value, field_name=field_name)
 
 
-def normalize_optional_text_to_none(value: str | None) -> str | None:
+def normalize_required_text(value: object, *, field_name: str) -> object:
+    """Trim required text and reject empty values.
+
+    Returns non-string values unchanged so schema type validators can handle them.
+    """
+    if not isinstance(value, str):
+        return value
+    normalized_value = value.strip()
+    if not normalized_value:
+        raise ValueError(f"{field_name} must not be empty")
+    return normalized_value
+
+
+def normalize_optional_text(value: object, *, field_name: str) -> object:
+    """Trim optional text when provided and reject empty values.
+
+    Returns non-string values unchanged so schema type validators can handle them.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        return value
+    normalized_value = value.strip()
+    if not normalized_value:
+        raise ValueError(f"{field_name} must not be empty")
+    return normalized_value
+
+
+def normalize_optional_text_to_none(value: object) -> object:
     """Strip optional text and collapse empty/blank values to None."""
     if value is None:
         return None
+    if not isinstance(value, str):
+        return value
     normalized_value = value.strip()
     if not normalized_value:
         return None

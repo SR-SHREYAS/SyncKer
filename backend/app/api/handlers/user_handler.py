@@ -6,8 +6,6 @@ from app.schemas.user import UserResponse, UserUpdateRequest
 from app.services.user_service import UserService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_non_empty_text,
-    ensure_optional_non_empty_text,
     ensure_payload_has_updates,
     ensure_positive_id,
 )
@@ -38,7 +36,6 @@ class UserHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_payload_has_updates(payload, field_names=("username",))
-            ensure_optional_non_empty_text(payload.username, field_name="username")
 
             updated_user_details = self.user_service.UpdateCurrentUser(
                 user_id,
@@ -69,8 +66,6 @@ class UserHandler:
         """Create the current user's profile."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            ensure_non_empty_text(payload.full_name, field_name="full_name")
-            ensure_non_empty_text(payload.timezone, field_name="timezone")
 
             profile = self.user_service.CreateCurrentUserProfile(
                 user_id,
@@ -94,8 +89,6 @@ class UserHandler:
                 payload,
                 field_names=("full_name", "bio", "role", "timezone"),
             )
-            ensure_optional_non_empty_text(payload.full_name, field_name="full_name")
-            ensure_optional_non_empty_text(payload.timezone, field_name="timezone")
 
             updated_profile = self.user_service.UpdateCurrentUserProfile(
                 user_id,
