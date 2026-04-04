@@ -34,3 +34,9 @@ class User(TimestampMixin, Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    owned_teams = relationship("Team", back_populates="owner")
+    team_memberships = relationship(
+        "TeamMember",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )

@@ -16,6 +16,7 @@ class SessionSuggestion(TimestampMixin, Base):
     __tablename__ = "session_suggestions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"), nullable=True, index=True)
     generated_for_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     mentor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     learner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -32,5 +33,6 @@ class SessionSuggestion(TimestampMixin, Base):
     )
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
 
+    team = relationship("Team", back_populates="suggestions")
     skill = relationship("Skill", back_populates="suggestions")
     session = relationship("Session", back_populates="suggestion", uselist=False)

@@ -3,6 +3,7 @@ import pytest
 
 from app.core.exceptions import BadRequestError
 from app.utils.request_validation import (
+    ensure_id_in_list,
     ensure_non_empty_text,
     ensure_optional_non_empty_text,
     ensure_participant_ids_list,
@@ -96,3 +97,34 @@ def test_ensure_participant_ids_list_rejects_too_few_participants() -> None:
 def test_ensure_participant_ids_list_rejects_non_positive_ids() -> None:
     with pytest.raises(BadRequestError):
         ensure_participant_ids_list([1, -2], context="suggestion generation")
+
+
+def test_ensure_id_in_list_allows_present_value() -> None:
+    ensure_id_in_list(
+        value=5,
+        values=[2, 5, 8],
+        field_name="current_user_id",
+        context="suggestion generation",
+    )
+
+
+def test_ensure_id_in_list_rejects_missing_value() -> None:
+    with pytest.raises(BadRequestError):
+        ensure_id_in_list(
+            value=5,
+            values=[2, 8],
+            field_name="current_user_id",
+            context="suggestion generation",
+        )
+
+
+def test_ensure_id_in_list_rejects_missing_value_with_custom_container_name() -> None:
+    with pytest.raises(BadRequestError) as raised_error:
+        ensure_id_in_list(
+            value=7,
+            values=[2, 8],
+            field_name="actor_user_id",
+            context="team assignment",
+            container_field_name="assignee_user_ids",
+        )
+    assert "assignee_user_ids" in str(raised_error.value)

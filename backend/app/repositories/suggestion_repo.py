@@ -15,6 +15,7 @@ class SuggestionRepository:
     def create_suggestion(
         self,
         *,
+        team_id: int | None,
         generated_for_user_id: int,
         mentor_user_id: int,
         learner_user_id: int,
@@ -29,6 +30,7 @@ class SuggestionRepository:
     ) -> SessionSuggestion:
         """Insert one generated session suggestion."""
         suggestion = SessionSuggestion(
+            team_id=team_id,
             generated_for_user_id=generated_for_user_id,
             mentor_user_id=mentor_user_id,
             learner_user_id=learner_user_id,

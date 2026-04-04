@@ -8,9 +8,10 @@ This first backbone release includes:
 
 - auth and JWT login
 - user and profile APIs
+- team workspace APIs (create team, add members, list members)
 - skill catalog and user-skill APIs
 - planning APIs for tasks, availability, and routine blocks
-- scheduling suggestion APIs
+- scheduling suggestion APIs with team membership checks
 - session booking from suggestions
 - initial Alembic schema migration
 
@@ -33,11 +34,18 @@ Main backend folders:
 
 ## Local Setup
 
-1. Copy `.env.example` to `.env`
+1. Create `.env` in repo root
 2. Start Postgres
 3. Install backend dependencies
 4. Run Alembic migration
 5. Start FastAPI
+
+Minimal `.env` values:
+
+```bash
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/syncskill
+JWT_SECRET_KEY=change-me-please-use-a-long-secret-key
+```
 
 ## Suggested Commands
 
@@ -74,6 +82,7 @@ uvicorn app.main:app --reload --app-dir backend
 - `/auth`
 - `/users`
 - `/skills`
+- `/teams`
 - `/planning`
 - `/scheduling`
 - `/sessions`

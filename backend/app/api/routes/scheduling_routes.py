@@ -13,6 +13,7 @@ from app.repositories.routine_repo import RoutineRepository
 from app.repositories.skill_repo import SkillRepository
 from app.repositories.suggestion_repo import SuggestionRepository
 from app.repositories.task_repo import TaskRepository
+from app.repositories.team_repo import TeamRepository
 from app.schemas.scheduling import (
     SessionSuggestionResponse,
     SuggestionGenerationRequest,
@@ -30,6 +31,7 @@ def get_scheduling_handler(db: Annotated[Session, Depends(get_db)]) -> Schedulin
     availability_repo = AvailabilityRepository(db)
     routine_repo = RoutineRepository(db)
     skill_repo = SkillRepository(db)
+    team_repo = TeamRepository(db)
     scheduler_engine = SchedulerEngine()
     scheduling_service = SchedulingService(
         suggestion_repo,
@@ -38,6 +40,7 @@ def get_scheduling_handler(db: Annotated[Session, Depends(get_db)]) -> Schedulin
         availability_repo,
         routine_repo,
         skill_repo,
+        team_repo,
     )
     return SchedulingHandler(scheduling_service)
 

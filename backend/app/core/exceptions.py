@@ -29,6 +29,12 @@ class AuthenticationError(AppError):
     status_code = 401
 
 
+class ForbiddenError(AppError):
+    """Raised when user is authenticated but not allowed to perform an action."""
+
+    status_code = 403
+
+
 class NotFoundError(AppError):
     """Raised when a requested record does not exist."""
 

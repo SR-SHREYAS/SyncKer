@@ -101,6 +101,21 @@ def ensure_participant_ids_list(participant_user_ids: list[int], *, context: str
         ensure_positive_id(participant_user_id, field_name="participant_user_ids[]")
 
 
+def ensure_id_in_list(
+    *,
+    value: int,
+    values: list[int],
+    field_name: str,
+    context: str,
+    container_field_name: str = "participant_user_ids",
+) -> None:
+    """Ensure one id exists inside a related id list."""
+    if value not in values:
+        raise BadRequestError(
+            f"invalid {context}: {field_name} must be part of {container_field_name}"
+        )
+
+
 def ensure_model_fields_present(payload: BaseModel, *, fields: tuple[str, ...], context: str) -> None:
     """Ensure a create payload has required meaningful values after parsing."""
     for field_name in fields:

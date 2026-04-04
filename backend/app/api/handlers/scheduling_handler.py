@@ -9,6 +9,7 @@ from app.schemas.scheduling import (
 from app.services.scheduling_service import SchedulingService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
+    ensure_id_in_list,
     ensure_optional_id_is_positive,
     ensure_participant_ids_list,
     ensure_positive_id,
@@ -31,13 +32,21 @@ class SchedulingHandler:
         """Handle suggestion generation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
+            ensure_positive_id(payload.team_id, field_name="team_id")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
             ensure_participant_ids_list(
                 payload.participant_user_ids,
                 context="suggestion generation",
             )
+            ensure_id_in_list(
+                value=user_id,
+                values=payload.participant_user_ids,
+                field_name="current_user_id",
+                context="suggestion generation",
+            )
 
             created_suggestion = self.scheduling_service.GenerateSchedulingSuggestion(
+                team_id=payload.team_id,
                 generated_for_user_id=user_id,
                 participant_user_ids=payload.participant_user_ids,
                 collaboration_title=payload.collaboration_title,
@@ -113,6 +122,7 @@ class SchedulingHandler:
             ]
         return SessionSuggestionResponse(
             id=getattr(suggestion, "id"),
+            team_id=getattr(suggestion, "team_id", None),
             generated_for_user_id=getattr(suggestion, "generated_for_user_id"),
             participant_user_ids=list(participant_user_ids),
             collaboration_title=getattr(suggestion, "collaboration_title", "Collaboration Session"),

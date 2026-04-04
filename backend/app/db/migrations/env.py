@@ -18,6 +18,8 @@ from app.models.session_participant import SessionParticipant  # noqa: F401
 from app.models.session_suggestion import SessionSuggestion  # noqa: F401
 from app.models.skill import Skill  # noqa: F401
 from app.models.task import Task  # noqa: F401
+from app.models.team import Team  # noqa: F401
+from app.models.team_member import TeamMember  # noqa: F401
 from app.models.user import User  # noqa: F401
 from app.models.user_skill import UserSkill  # noqa: F401
 
