@@ -9,7 +9,9 @@ from app.schemas.scheduling import (
 from app.services.scheduling_service import SchedulingService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_distinct_ids,
+    ensure_non_empty_text,
+    ensure_optional_id_is_positive,
+    ensure_participant_ids_list,
     ensure_positive_id,
 )
 
@@ -30,25 +32,23 @@ class SchedulingHandler:
         """Handle suggestion generation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            ensure_positive_id(payload.learner_user_id, field_name="learner_user_id")
-            ensure_positive_id(payload.mentor_user_id, field_name="mentor_user_id")
-            ensure_positive_id(payload.skill_id, field_name="skill_id")
-            ensure_distinct_ids(
-                payload.learner_user_id,
-                payload.mentor_user_id,
+            ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
+            ensure_non_empty_text(payload.collaboration_title, field_name="collaboration_title")
+            ensure_participant_ids_list(
+                payload.participant_user_ids,
                 context="suggestion generation",
             )
 
             suggestion = self.scheduling_service.GenerateSchedulingSuggestion(
                 generated_for_user_id=user_id,
-                learner_user_id=payload.learner_user_id,
-                mentor_user_id=payload.mentor_user_id,
+                participant_user_ids=payload.participant_user_ids,
+                collaboration_title=payload.collaboration_title,
                 skill_id=payload.skill_id,
                 window_start_at=payload.window_start_at,
                 window_end_at=payload.window_end_at,
                 minimum_duration_minutes=payload.minimum_duration_minutes,
             )
-            response = SessionSuggestionResponse.model_validate(suggestion)
+            response = self._build_suggestion_response(suggestion)
             logger.info(
                 "scheduling generateSchedulingSuggestion handled for user_id=%s suggestion_id=%s",
                 user_id,
@@ -64,7 +64,7 @@ class SchedulingHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             suggestions = self.scheduling_service.ListSchedulingSuggestions(user_id)
-            response = [SessionSuggestionResponse.model_validate(item) for item in suggestions]
+            response = [self._build_suggestion_response(item) for item in suggestions]
             logger.info("scheduling listSchedulingSuggestions handled for user_id=%s count=%s", user_id, len(response))
             return response
         except AppError:
@@ -86,7 +86,7 @@ class SchedulingHandler:
                 suggestion_id,
                 status=payload.status,
             )
-            response = SessionSuggestionResponse.model_validate(suggestion)
+            response = self._build_suggestion_response(suggestion)
             logger.info(
                 "scheduling updateSchedulingSuggestionStatus handled for user_id=%s suggestion_id=%s",
                 user_id,
@@ -100,3 +100,25 @@ class SchedulingHandler:
                 suggestion_id,
             )
             raise
+
+    def _build_suggestion_response(self, suggestion: object) -> SessionSuggestionResponse:
+        """Build a neutral participant-based response for scheduling suggestions."""
+        participant_user_ids = getattr(suggestion, "participant_user_ids", None)
+        if not participant_user_ids:
+            participant_user_ids = [
+                getattr(suggestion, "mentor_user_id"),
+                getattr(suggestion, "learner_user_id"),
+            ]
+        return SessionSuggestionResponse(
+            id=getattr(suggestion, "id"),
+            generated_for_user_id=getattr(suggestion, "generated_for_user_id"),
+            participant_user_ids=list(participant_user_ids),
+            collaboration_title=getattr(suggestion, "collaboration_title", "Collaboration Session"),
+            skill_id=getattr(suggestion, "skill_id"),
+            suggested_start_at=getattr(suggestion, "suggested_start_at"),
+            suggested_end_at=getattr(suggestion, "suggested_end_at"),
+            score=float(getattr(suggestion, "score")),
+            status=getattr(suggestion, "status"),
+            explanation=getattr(suggestion, "explanation"),
+            created_at=getattr(suggestion, "created_at"),
+        )

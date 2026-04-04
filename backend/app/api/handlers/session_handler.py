@@ -32,7 +32,8 @@ class SessionHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(payload.suggestion_id, field_name="suggestion_id")
-            ensure_non_empty_text(payload.title, field_name="title")
+            if payload.title is not None:
+                ensure_non_empty_text(payload.title, field_name="title")
 
             session = self.session_service.CreateSessionFromSuggestion(
                 user_id,
@@ -77,11 +78,35 @@ class SessionHandler:
 
     def _build_session_detail(self, session: object) -> SessionDetailResponse:
         """Build a session response that includes participants."""
+        ordered_participants = sorted(
+            getattr(session, "participants", []),
+            key=lambda participant: getattr(participant, "id"),
+        )
         participants = [
-            SessionParticipantResponse.model_validate(participant)
-            for participant in getattr(session, "participants", [])
+            self._build_participant_response(participant, participant_index=index + 1)
+            for index, participant in enumerate(ordered_participants)
         ]
         return SessionDetailResponse(
             **SessionResponse.model_validate(session).model_dump(),
             participants=participants,
+        )
+
+    def _build_participant_response(
+        self,
+        participant: object,
+        *,
+        participant_index: int,
+    ) -> SessionParticipantResponse:
+        """Build one participant response with a neutral collaboration role label."""
+        participant_role = getattr(participant, "participant_role")
+        collaboration_role = f"participant_{participant_index}"
+        return SessionParticipantResponse(
+            id=getattr(participant, "id"),
+            session_id=getattr(participant, "session_id"),
+            user_id=getattr(participant, "user_id"),
+            participant_role=participant_role,
+            collaboration_role=collaboration_role,
+            response_status=getattr(participant, "response_status"),
+            joined_at=getattr(participant, "joined_at"),
+            created_at=getattr(participant, "created_at"),
         )

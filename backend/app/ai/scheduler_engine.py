@@ -11,18 +11,14 @@ class SchedulerEngine:
     def generate(
         self,
         *,
-        learner_user_id: int,
-        mentor_user_id: int,
+        participant_user_ids: list[int],
         skill_id: int,
         minimum_duration_minutes: int,
         window_start_at,
         window_end_at,
-        learner_tasks: list[object],
-        mentor_tasks: list[object],
-        learner_availability_blocks: list[object],
-        mentor_availability_blocks: list[object],
-        learner_routine_blocks: list[object],
-        mentor_routine_blocks: list[object],
+        tasks: list[object],
+        availability_blocks: list[object],
+        routine_blocks: list[object],
     ) -> dict[str, object]:
         """Generate one session suggestion with planning-aware rules."""
         resolved_start, resolved_end = resolve_window(
@@ -30,25 +26,17 @@ class SchedulerEngine:
             window_end_at,
             minimum_duration_minutes,
         )
-        all_availability = [
-            *learner_availability_blocks,
-            *mentor_availability_blocks,
-        ]
-        all_routines = [
-            *learner_routine_blocks,
-            *mentor_routine_blocks,
-        ]
         related_tasks = [
             task
-            for task in [*learner_tasks, *mentor_tasks]
+            for task in tasks
             if task.skill_id is None or task.skill_id == skill_id
         ]
         suggested_start_at, suggested_end_at = pick_first_common_slot(
             window_start_at=resolved_start,
             window_end_at=resolved_end,
             minimum_duration_minutes=minimum_duration_minutes,
-            availability_blocks=all_availability,
-            routine_blocks=all_routines,
+            availability_blocks=availability_blocks,
+            routine_blocks=routine_blocks,
         )
 
         if suggested_end_at > resolved_end:
@@ -68,8 +56,7 @@ class SchedulerEngine:
         )
 
         return {
-            "learner_user_id": learner_user_id,
-            "mentor_user_id": mentor_user_id,
+            "participant_user_ids": participant_user_ids,
             "skill_id": skill_id,
             "suggested_start_at": suggested_start_at,
             "suggested_end_at": suggested_end_at,

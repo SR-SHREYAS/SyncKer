@@ -6,9 +6,11 @@ from app.models.enums import SuggestionStatus
 from app.models.session_suggestion import SessionSuggestion
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
+from app.repositories.skill_repo import SkillRepository
 from app.repositories.suggestion_repo import SuggestionRepository
 from app.repositories.task_repo import TaskRepository
 from app.utils.logger import get_logger
+from sqlalchemy.exc import IntegrityError
 
 logger = get_logger(__name__)
 
@@ -23,50 +25,56 @@ class SchedulingService:
         task_repo: TaskRepository,
         availability_repo: AvailabilityRepository,
         routine_repo: RoutineRepository,
+        skill_repo: SkillRepository,
     ) -> None:
         self.suggestion_repo = suggestion_repo
         self.scheduler_engine = scheduler_engine
         self.task_repo = task_repo
         self.availability_repo = availability_repo
         self.routine_repo = routine_repo
+        self.skill_repo = skill_repo
 
     def GenerateSchedulingSuggestion(
         self,
         *,
         generated_for_user_id: int,
-        learner_user_id: int,
-        mentor_user_id: int,
-        skill_id: int,
+        participant_user_ids: list[int],
+        collaboration_title: str,
+        skill_id: int | None,
         window_start_at: object,
         window_end_at: object,
         minimum_duration_minutes: int,
     ) -> SessionSuggestion:
         """Generate and save one planning-aware session suggestion."""
-        learner_tasks = self.task_repo.list_tasks_by_user(learner_user_id)
-        mentor_tasks = self.task_repo.list_tasks_by_user(mentor_user_id)
-        learner_availability_blocks = self.availability_repo.list_blocks_by_user(learner_user_id)
-        mentor_availability_blocks = self.availability_repo.list_blocks_by_user(mentor_user_id)
-        learner_routine_blocks = self.routine_repo.list_blocks_by_user(learner_user_id)
-        mentor_routine_blocks = self.routine_repo.list_blocks_by_user(mentor_user_id)
+        resolved_skill_id = self._resolve_skill_id(skill_id)
+        tasks: list[object] = []
+        availability_blocks: list[object] = []
+        routine_blocks: list[object] = []
+        for participant_user_id in participant_user_ids:
+            tasks.extend(self.task_repo.list_tasks_by_user(participant_user_id))
+            availability_blocks.extend(self.availability_repo.list_blocks_by_user(participant_user_id))
+            routine_blocks.extend(self.routine_repo.list_blocks_by_user(participant_user_id))
+
         result = self.scheduler_engine.generate(
-            learner_user_id=learner_user_id,
-            mentor_user_id=mentor_user_id,
-            skill_id=skill_id,
+            participant_user_ids=participant_user_ids,
+            skill_id=resolved_skill_id,
             minimum_duration_minutes=minimum_duration_minutes,
             window_start_at=window_start_at,
             window_end_at=window_end_at,
-            learner_tasks=learner_tasks,
-            mentor_tasks=mentor_tasks,
-            learner_availability_blocks=learner_availability_blocks,
-            mentor_availability_blocks=mentor_availability_blocks,
-            learner_routine_blocks=learner_routine_blocks,
-            mentor_routine_blocks=mentor_routine_blocks,
+            tasks=tasks,
+            availability_blocks=availability_blocks,
+            routine_blocks=routine_blocks,
         )
+
+        participant_one_user_id = participant_user_ids[0]
+        participant_two_user_id = participant_user_ids[1]
         suggestion = self.suggestion_repo.create_suggestion(
             generated_for_user_id=generated_for_user_id,
-            mentor_user_id=mentor_user_id,
-            learner_user_id=learner_user_id,
-            skill_id=skill_id,
+            mentor_user_id=participant_one_user_id,
+            learner_user_id=participant_two_user_id,
+            participant_user_ids=participant_user_ids,
+            collaboration_title=collaboration_title,
+            skill_id=resolved_skill_id,
             suggested_start_at=result["suggested_start_at"],
             suggested_end_at=result["suggested_end_at"],
             score=result["score"],
@@ -110,3 +118,30 @@ class SchedulingService:
             suggestion_id,
         )
         return suggestion
+
+    def _resolve_skill_id(self, skill_id: int | None) -> int:
+        """Resolve a valid skill id while keeping skill optional for workflow."""
+        if skill_id is not None:
+            skill = self.skill_repo.get_skill_by_id(skill_id)
+            if skill is None:
+                raise NotFoundError("skill not found")
+            return skill.id
+
+        default_slug = "general-collaboration"
+        existing_default = self.skill_repo.get_skill_by_slug(default_slug)
+        if existing_default is not None:
+            return existing_default.id
+
+        try:
+            created_default = self.skill_repo.create_skill(
+                name="General Collaboration",
+                slug=default_slug,
+                description="Auto-created default category for collaboration scheduling.",
+            )
+            return created_default.id
+        except IntegrityError:
+            self.skill_repo.db.rollback()
+            existing_after_race = self.skill_repo.get_skill_by_slug(default_slug)
+            if existing_after_race is not None:
+                return existing_after_race.id
+            raise

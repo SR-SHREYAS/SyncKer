@@ -9,7 +9,7 @@ from app.models.enums import ParticipantResponseStatus, ParticipantRole, Session
 
 class SessionCreateFromSuggestionRequest(BaseModel):
     suggestion_id: int
-    title: str = Field(min_length=2, max_length=180)
+    title: str | None = Field(default=None, min_length=2, max_length=180)
 
 
 class SessionParticipantResponse(BaseModel):
@@ -17,6 +17,7 @@ class SessionParticipantResponse(BaseModel):
     session_id: int
     user_id: int
     participant_role: ParticipantRole
+    collaboration_role: str
     response_status: ParticipantResponseStatus
     joined_at: datetime | None
     created_at: datetime

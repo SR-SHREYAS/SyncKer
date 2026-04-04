@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric, Text
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -19,6 +19,8 @@ class SessionSuggestion(TimestampMixin, Base):
     generated_for_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     mentor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     learner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    participant_user_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False)
+    collaboration_title: Mapped[str] = mapped_column(String(180), nullable=False)
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), nullable=False)
     suggested_start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     suggested_end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

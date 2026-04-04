@@ -19,18 +19,14 @@ def test_scheduler_engine_returns_slot_inside_window() -> None:
     ]
 
     result = engine.generate(
-        learner_user_id=1,
-        mentor_user_id=2,
+        participant_user_ids=[1, 2],
         skill_id=10,
         minimum_duration_minutes=60,
         window_start_at=now,
         window_end_at=now + timedelta(days=1),
-        learner_tasks=[],
-        mentor_tasks=[],
-        learner_availability_blocks=availability,
-        mentor_availability_blocks=[],
-        learner_routine_blocks=[],
-        mentor_routine_blocks=[],
+        tasks=[],
+        availability_blocks=availability,
+        routine_blocks=[],
     )
 
     assert result["suggested_start_at"] >= now
@@ -53,32 +49,24 @@ def test_scheduler_engine_scores_related_tasks_higher() -> None:
     related_task = SimpleNamespace(skill_id=10)
 
     without_tasks = engine.generate(
-        learner_user_id=1,
-        mentor_user_id=2,
+        participant_user_ids=[1, 2],
         skill_id=10,
         minimum_duration_minutes=60,
         window_start_at=now,
         window_end_at=now + timedelta(days=1),
-        learner_tasks=[],
-        mentor_tasks=[],
-        learner_availability_blocks=availability,
-        mentor_availability_blocks=[],
-        learner_routine_blocks=[],
-        mentor_routine_blocks=[],
+        tasks=[],
+        availability_blocks=availability,
+        routine_blocks=[],
     )
     with_tasks = engine.generate(
-        learner_user_id=1,
-        mentor_user_id=2,
+        participant_user_ids=[1, 2],
         skill_id=10,
         minimum_duration_minutes=60,
         window_start_at=now,
         window_end_at=now + timedelta(days=1),
-        learner_tasks=[related_task],
-        mentor_tasks=[],
-        learner_availability_blocks=availability,
-        mentor_availability_blocks=[],
-        learner_routine_blocks=[],
-        mentor_routine_blocks=[],
+        tasks=[related_task],
+        availability_blocks=availability,
+        routine_blocks=[],
     )
 
     assert with_tasks["score"] > without_tasks["score"]

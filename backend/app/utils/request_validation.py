@@ -44,6 +44,16 @@ def ensure_distinct_ids(left_value: int, right_value: int, *, context: str) -> N
         raise BadRequestError(f"invalid {context}: both ids cannot be the same")
 
 
+def ensure_participant_ids_list(participant_user_ids: list[int], *, context: str) -> None:
+    """Ensure participant list is usable for scheduling logic."""
+    if len(participant_user_ids) < 2:
+        raise BadRequestError(f"invalid {context}: at least two participants are required")
+    if len(set(participant_user_ids)) != len(participant_user_ids):
+        raise BadRequestError(f"invalid {context}: participant ids must be unique")
+    for participant_user_id in participant_user_ids:
+        ensure_positive_id(participant_user_id, field_name="participant_user_ids[]")
+
+
 def ensure_model_fields_present(payload: BaseModel, *, fields: tuple[str, ...], context: str) -> None:
     """Ensure a create payload has required meaningful values after parsing."""
     for field_name in fields:

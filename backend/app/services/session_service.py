@@ -26,7 +26,7 @@ class SessionService:
         self.session_repo = session_repo
         self.suggestion_repo = suggestion_repo
 
-    def CreateSessionFromSuggestion(self, user_id: int, *, suggestion_id: int, title: str) -> Session:
+    def CreateSessionFromSuggestion(self, user_id: int, *, suggestion_id: int, title: str | None) -> Session:
         """Create a booked session from one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
         if suggestion is None or suggestion.generated_for_user_id != user_id:
@@ -45,27 +45,25 @@ class SessionService:
             )
             raise ConflictError("session already exists for this suggestion")
 
+        resolved_title = title or suggestion.collaboration_title
         session = self.session_repo.create_session(
             session_suggestion_id=suggestion.id,
             skill_id=suggestion.skill_id,
-            title=title,
+            title=resolved_title,
             scheduled_start_at=suggestion.suggested_start_at,
             scheduled_end_at=suggestion.suggested_end_at,
             status=SessionStatus.SCHEDULED,
             created_by_user_id=user_id,
         )
-        self.session_repo.create_participant(
-            session_id=session.id,
-            user_id=suggestion.mentor_user_id,
-            participant_role=ParticipantRole.MENTOR,
-            response_status=ParticipantResponseStatus.ACCEPTED,
-        )
-        self.session_repo.create_participant(
-            session_id=session.id,
-            user_id=suggestion.learner_user_id,
-            participant_role=ParticipantRole.LEARNER,
-            response_status=ParticipantResponseStatus.ACCEPTED,
-        )
+        participant_user_ids = suggestion.participant_user_ids
+        for index, participant_user_id in enumerate(participant_user_ids):
+            participant_role = ParticipantRole.MENTOR if index == 0 else ParticipantRole.LEARNER
+            self.session_repo.create_participant(
+                session_id=session.id,
+                user_id=participant_user_id,
+                participant_role=participant_role,
+                response_status=ParticipantResponseStatus.ACCEPTED,
+            )
         self.suggestion_repo.update_suggestion(suggestion, status=SuggestionStatus.ACCEPTED)
         session = self.session_repo.get_session_by_id(session.id) or session
         logger.info("session create service completed for user_id=%s session_id=%s", user_id, session.id)

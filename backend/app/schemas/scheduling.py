@@ -8,9 +8,9 @@ from app.models.enums import SuggestionStatus
 
 
 class SuggestionGenerationRequest(BaseModel):
-    learner_user_id: int
-    mentor_user_id: int
-    skill_id: int
+    participant_user_ids: list[int] = Field(min_length=2)
+    collaboration_title: str = Field(min_length=2, max_length=180)
+    skill_id: int | None = None
     window_start_at: datetime | None = None
     window_end_at: datetime | None = None
     minimum_duration_minutes: int = Field(default=30, ge=15, le=240)
@@ -19,8 +19,8 @@ class SuggestionGenerationRequest(BaseModel):
 class SessionSuggestionResponse(BaseModel):
     id: int
     generated_for_user_id: int
-    mentor_user_id: int
-    learner_user_id: int
+    participant_user_ids: list[int]
+    collaboration_title: str
     skill_id: int
     suggested_start_at: datetime
     suggested_end_at: datetime
