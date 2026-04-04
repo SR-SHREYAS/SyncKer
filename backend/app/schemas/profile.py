@@ -2,9 +2,10 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from app.models.enums import ProfileRole
+from app.utils.request_validation import normalize_optional_text, normalize_required_text
 
 
 class ProfileBase(BaseModel):
@@ -12,6 +13,11 @@ class ProfileBase(BaseModel):
     bio: str | None = Field(default=None, max_length=2000)
     role: ProfileRole
     timezone: str = Field(min_length=2, max_length=64)
+
+    @field_validator("full_name", "timezone", mode="before")
+    @classmethod
+    def normalize_required_text_fields(cls, value: object, info: ValidationInfo) -> object:
+        return normalize_required_text(value, field_name=info.field_name)
 
 
 class ProfileCreateRequest(ProfileBase):
@@ -23,6 +29,11 @@ class ProfileUpdateRequest(BaseModel):
     bio: str | None = Field(default=None, max_length=2000)
     role: ProfileRole | None = None
     timezone: str | None = Field(default=None, min_length=2, max_length=64)
+
+    @field_validator("full_name", "timezone", mode="before")
+    @classmethod
+    def normalize_optional_text_fields(cls, value: object, info: ValidationInfo) -> object:
+        return normalize_optional_text(value, field_name=info.field_name)
 
 
 class ProfileResponse(ProfileBase):

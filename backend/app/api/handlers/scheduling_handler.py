@@ -9,7 +9,6 @@ from app.schemas.scheduling import (
 from app.services.scheduling_service import SchedulingService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_non_empty_text,
     ensure_optional_id_is_positive,
     ensure_participant_ids_list,
     ensure_positive_id,
@@ -33,13 +32,12 @@ class SchedulingHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
-            ensure_non_empty_text(payload.collaboration_title, field_name="collaboration_title")
             ensure_participant_ids_list(
                 payload.participant_user_ids,
                 context="suggestion generation",
             )
 
-            suggestion = self.scheduling_service.GenerateSchedulingSuggestion(
+            created_suggestion = self.scheduling_service.GenerateSchedulingSuggestion(
                 generated_for_user_id=user_id,
                 participant_user_ids=payload.participant_user_ids,
                 collaboration_title=payload.collaboration_title,
@@ -48,13 +46,13 @@ class SchedulingHandler:
                 window_end_at=payload.window_end_at,
                 minimum_duration_minutes=payload.minimum_duration_minutes,
             )
-            response = self._build_suggestion_response(suggestion)
+            suggestion_response = self._build_suggestion_response(created_suggestion)
             logger.info(
                 "scheduling generateSchedulingSuggestion handled for user_id=%s suggestion_id=%s",
                 user_id,
-                suggestion.id,
+                created_suggestion.id,
             )
-            return response
+            return suggestion_response
         except AppError:
             logger.exception("scheduling generateSchedulingSuggestion failed for user_id=%s", user_id)
             raise
@@ -63,10 +61,14 @@ class SchedulingHandler:
         """Handle suggestion list requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            suggestions = self.scheduling_service.ListSchedulingSuggestions(user_id)
-            response = [self._build_suggestion_response(item) for item in suggestions]
-            logger.info("scheduling listSchedulingSuggestions handled for user_id=%s count=%s", user_id, len(response))
-            return response
+            scheduling_suggestions = self.scheduling_service.ListSchedulingSuggestions(user_id)
+            suggestion_responses = [self._build_suggestion_response(item) for item in scheduling_suggestions]
+            logger.info(
+                "scheduling listSchedulingSuggestions handled for user_id=%s count=%s",
+                user_id,
+                len(suggestion_responses),
+            )
+            return suggestion_responses
         except AppError:
             logger.exception("scheduling listSchedulingSuggestions failed for user_id=%s", user_id)
             raise
@@ -81,18 +83,18 @@ class SchedulingHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(suggestion_id, field_name="suggestion_id")
-            suggestion = self.scheduling_service.UpdateSchedulingSuggestionStatus(
+            updated_suggestion = self.scheduling_service.UpdateSchedulingSuggestionStatus(
                 user_id,
                 suggestion_id,
                 status=payload.status,
             )
-            response = self._build_suggestion_response(suggestion)
+            suggestion_response = self._build_suggestion_response(updated_suggestion)
             logger.info(
                 "scheduling updateSchedulingSuggestionStatus handled for user_id=%s suggestion_id=%s",
                 user_id,
                 suggestion_id,
             )
-            return response
+            return suggestion_response
         except AppError:
             logger.exception(
                 "scheduling updateSchedulingSuggestionStatus failed for user_id=%s suggestion_id=%s",

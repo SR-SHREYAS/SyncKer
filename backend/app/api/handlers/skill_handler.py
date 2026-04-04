@@ -10,7 +10,6 @@ from app.schemas.skill import (
 from app.services.skill_service import SkillService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
-    ensure_non_empty_text,
     ensure_positive_id,
 )
 
@@ -26,17 +25,14 @@ class SkillHandler:
     def createSkillCatalogEntry(self, payload: SkillCreateRequest) -> SkillResponse:
         """Handle skill creation requests."""
         try:
-            ensure_non_empty_text(payload.name, field_name="name")
-            ensure_non_empty_text(payload.slug, field_name="slug")
-
-            skill = self.skill_service.CreateSkillCatalogEntry(
+            created_skill = self.skill_service.CreateSkillCatalogEntry(
                 name=payload.name,
                 slug=payload.slug,
                 description=payload.description,
             )
-            response = SkillResponse.model_validate(skill)
-            logger.info("skill createSkillCatalogEntry handled for skill_id=%s", skill.id)
-            return response
+            skill_response = SkillResponse.model_validate(created_skill)
+            logger.info("skill createSkillCatalogEntry handled for skill_id=%s", created_skill.id)
+            return skill_response
         except AppError:
             logger.exception("skill createSkillCatalogEntry failed for slug=%s", payload.slug)
             raise
@@ -44,10 +40,10 @@ class SkillHandler:
     def listSkillCatalog(self) -> list[SkillResponse]:
         """Handle skill catalog listing requests."""
         try:
-            skills = self.skill_service.ListSkillCatalog()
-            response = [SkillResponse.model_validate(skill) for skill in skills]
-            logger.info("skill listSkillCatalog handled with count=%s", len(response))
-            return response
+            skill_catalog = self.skill_service.ListSkillCatalog()
+            skill_responses = [SkillResponse.model_validate(skill) for skill in skill_catalog]
+            logger.info("skill listSkillCatalog handled with count=%s", len(skill_responses))
+            return skill_responses
         except AppError:
             logger.exception("skill listSkillCatalog failed")
             raise
@@ -58,20 +54,20 @@ class SkillHandler:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(payload.skill_id, field_name="skill_id")
 
-            user_skill = self.skill_service.AttachSkillToUser(
+            user_skill_relation = self.skill_service.AttachSkillToUser(
                 user_id=user_id,
                 skill_id=payload.skill_id,
                 proficiency_level=payload.proficiency_level,
                 is_teaching=payload.is_teaching,
                 is_learning=payload.is_learning,
             )
-            response = UserSkillResponse.model_validate(user_skill)
+            user_skill_response = UserSkillResponse.model_validate(user_skill_relation)
             logger.info(
                 "user skill attachSkillToCurrentUser handled for user_id=%s skill_id=%s",
                 user_id,
                 payload.skill_id,
             )
-            return response
+            return user_skill_response
         except AppError:
             logger.exception(
                 "user skill attachSkillToCurrentUser failed for user_id=%s skill_id=%s",
@@ -84,10 +80,17 @@ class SkillHandler:
         """Handle user-skill listing requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            user_skills = self.skill_service.ListUserSkills(user_id)
-            response = [UserSkillResponse.model_validate(user_skill) for user_skill in user_skills]
-            logger.info("user skill listCurrentUserSkills handled for user_id=%s count=%s", user_id, len(response))
-            return response
+            user_skill_relations = self.skill_service.ListUserSkills(user_id)
+            user_skill_responses = [
+                UserSkillResponse.model_validate(user_skill_relation)
+                for user_skill_relation in user_skill_relations
+            ]
+            logger.info(
+                "user skill listCurrentUserSkills handled for user_id=%s count=%s",
+                user_id,
+                len(user_skill_responses),
+            )
+            return user_skill_responses
         except AppError:
             logger.exception("user skill listCurrentUserSkills failed for user_id=%s", user_id)
             raise

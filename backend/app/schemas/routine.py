@@ -2,7 +2,9 @@
 
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+
+from app.utils.request_validation import normalize_optional_text, normalize_required_text
 
 
 class RoutineBlockBase(BaseModel):
@@ -12,6 +14,11 @@ class RoutineBlockBase(BaseModel):
     end_time: time
     is_recurring: bool = True
     specific_date: date | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def normalize_title_not_blank(cls, value: object, info: ValidationInfo) -> object:
+        return normalize_required_text(value, field_name=info.field_name)
 
     @model_validator(mode="after")
     def validate_block(self) -> "RoutineBlockBase":
@@ -35,6 +42,11 @@ class RoutineBlockUpdateRequest(BaseModel):
     end_time: time | None = None
     is_recurring: bool | None = None
     specific_date: date | None = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def normalize_optional_title_not_blank(cls, value: object, info: ValidationInfo) -> object:
+        return normalize_optional_text(value, field_name=info.field_name)
 
 
 class RoutineBlockResponse(RoutineBlockBase):

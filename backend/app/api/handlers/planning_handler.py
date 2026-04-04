@@ -36,7 +36,7 @@ class PlanningHandler:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
 
-            task = self.planning_service.CreatePlanningTask(
+            created_task = self.planning_service.CreatePlanningTask(
                 user_id=user_id,
                 title=payload.title,
                 description=payload.description,
@@ -46,9 +46,9 @@ class PlanningHandler:
                 deadline_at=payload.deadline_at,
                 skill_id=payload.skill_id,
             )
-            response = TaskResponse.model_validate(task)
-            logger.info("task createPlanningTask handled for user_id=%s task_id=%s", user_id, task.id)
-            return response
+            task_response = TaskResponse.model_validate(created_task)
+            logger.info("task createPlanningTask handled for user_id=%s task_id=%s", user_id, created_task.id)
+            return task_response
         except AppError:
             logger.exception("task createPlanningTask failed for user_id=%s", user_id)
             raise
@@ -84,7 +84,7 @@ class PlanningHandler:
             )
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
 
-            task = self.planning_service.UpdatePlanningTask(
+            updated_task = self.planning_service.UpdatePlanningTask(
                 user_id,
                 task_id,
                 title=payload.title,
@@ -95,9 +95,9 @@ class PlanningHandler:
                 deadline_at=payload.deadline_at,
                 skill_id=payload.skill_id,
             )
-            response = TaskResponse.model_validate(task)
+            task_response = TaskResponse.model_validate(updated_task)
             logger.info("task updatePlanningTask handled for user_id=%s task_id=%s", user_id, task_id)
-            return response
+            return task_response
         except AppError:
             logger.exception("task updatePlanningTask failed for user_id=%s task_id=%s", user_id, task_id)
             raise
