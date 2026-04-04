@@ -29,12 +29,17 @@ class SkillHandler:
         try:
             ensure_non_empty_text(payload.name, field_name="name")
             ensure_non_empty_text(payload.slug, field_name="slug")
-            ensure_optional_non_empty_text(payload.description, field_name="description")
+            normalized_description = payload.description
+            if normalized_description is not None:
+                normalized_description = normalized_description.strip()
+                if not normalized_description:
+                    normalized_description = None
+            ensure_optional_non_empty_text(normalized_description, field_name="description")
 
             created_skill = self.skill_service.CreateSkillCatalogEntry(
                 name=payload.name,
                 slug=payload.slug,
-                description=payload.description,
+                description=normalized_description,
             )
             skill_response = SkillResponse.model_validate(created_skill)
             logger.info("skill createSkillCatalogEntry handled for skill_id=%s", created_skill.id)
