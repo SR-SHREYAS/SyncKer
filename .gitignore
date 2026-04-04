@@ -1,9 +1,17 @@
-# OS / editor
+# ------------------------------
+# OS / Editor metadata
+# ------------------------------
 .DS_Store
+Thumbs.db
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
 
-# Python
+# ------------------------------
+# Python artifacts
+# ------------------------------
 __pycache__/
 *.py[cod]
 *.pyo
@@ -12,25 +20,73 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .coverage
+.coverage.*
 htmlcov/
+.tox/
+.nox/
 .venv/
 venv/
 env/
 
-# Environment files
-.env
-.env.*
-!.env.example
-
-# Build / logs
+# ------------------------------
+# Runtime / logs / temp
+# ------------------------------
 *.log
+*.pid
+*.out
+*.err
+tmp/
+temp/
+.tmp/
 
-# Frontend
+# ------------------------------
+# Databases / local state
+# ------------------------------
+*.sqlite3
+*.db
+*.db-*
+
+# ------------------------------
+# Node / frontend artifacts
+# ------------------------------
 node_modules/
 dist/
 build/
+.next/
+.nuxt/
+.svelte-kit/
 
-# Local databases and temp files
-*.sqlite3
-*.db
-tmp/
+# ------------------------------
+# Secrets and sensitive configs
+# STRICT: never commit local secrets
+# ------------------------------
+.env
+.env.*
+*.env
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+*.cer
+*.csr
+*.ovpn
+*.kubeconfig
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.tfvars
+terraform.tfstate
+terraform.tfstate.*
+*.service-account.json
+*credentials*.json
+secrets/
+secret/
+
+# ------------------------------
+# Tooling / local-only files
+# ------------------------------
+.codex
