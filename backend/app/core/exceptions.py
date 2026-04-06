@@ -35,6 +35,12 @@ class ForbiddenError(AppError):
     status_code = 403
 
 
+class InternalServerError(AppError):
+    """Raised when internal application state is inconsistent."""
+
+    status_code = 500
+
+
 class NotFoundError(AppError):
     """Raised when a requested record does not exist."""
 

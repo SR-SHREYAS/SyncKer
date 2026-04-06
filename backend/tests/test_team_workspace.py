@@ -2,8 +2,9 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
-from app.core.exceptions import ForbiddenError
+from app.core.exceptions import ConflictError, ForbiddenError
 from app.models.enums import SuggestionStatus
 from app.services.scheduling_service import SchedulingService
 from app.services.team_service import TeamService
@@ -49,6 +50,8 @@ class _FakeTeamRepo:
         return [self.teams[item] for item in team_ids]
 
     def add_team_member(self, *, team_id: int, user_id: int):
+        if (team_id, user_id) in self.memberships:
+            raise IntegrityError("duplicate membership", params=None, orig=Exception("duplicate membership"))
         membership = SimpleNamespace(
             id=self._next_membership_id,
             team_id=team_id,
@@ -143,6 +146,17 @@ def test_add_team_participant_requires_owner() -> None:
         service.AddTeamParticipant(current_user_id=2, team_id=team.id, participant_user_id=3)
 
 
+def test_add_team_participant_maps_duplicate_membership_to_conflict_error() -> None:
+    team_repo = _FakeTeamRepo()
+    user_repo = _FakeUserRepo()
+    service = TeamService(team_repo, user_repo)
+    team = service.CreateTeamWorkspace(current_user_id=1, name="Core Team", description=None)
+
+    service.AddTeamParticipant(current_user_id=1, team_id=team.id, participant_user_id=2)
+    with pytest.raises(ConflictError):
+        service.AddTeamParticipant(current_user_id=1, team_id=team.id, participant_user_id=2)
+
+
 def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> None:
     team_repo = _FakeTeamRepo()
     user_repo = _FakeUserRepo()
@@ -157,7 +171,7 @@ def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> No
         availability_repo=_FakeEmptyRepo(),
         routine_repo=_FakeEmptyRepo(),
         skill_repo=_FakeSkillRepo(),
-        team_repo=team_repo,
+        team_service=team_service,
     )
 
     with pytest.raises(ForbiddenError):
@@ -188,7 +202,7 @@ def test_generate_scheduling_suggestion_saves_team_context() -> None:
         availability_repo=_FakeEmptyRepo(),
         routine_repo=_FakeEmptyRepo(),
         skill_repo=_FakeSkillRepo(),
-        team_repo=team_repo,
+        team_service=team_service,
     )
 
     suggestion = scheduling_service.GenerateSchedulingSuggestion(

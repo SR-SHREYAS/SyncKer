@@ -6,6 +6,7 @@ from app.models.team_member import TeamMember
 from app.repositories.team_repo import TeamRepository
 from app.repositories.user_repo import UserRepository
 from app.utils.logger import get_logger
+from sqlalchemy.exc import IntegrityError
 
 logger = get_logger(__name__)
 
@@ -36,10 +37,7 @@ class TeamService:
 
     def AddTeamParticipant(self, *, current_user_id: int, team_id: int, participant_user_id: int) -> TeamMember:
         """Add one user into a team when requested by the team owner."""
-        team = self.team_repo.get_team_by_id(team_id)
-        if team is None:
-            logger.error("team add participant blocked: team not found for team_id=%s", team_id)
-            raise NotFoundError("team not found")
+        team = self._get_team_or_raise(team_id)
 
         if team.owner_user_id != current_user_id:
             logger.error(
@@ -54,8 +52,11 @@ class TeamService:
             logger.error("team add participant blocked: user not found for user_id=%s", participant_user_id)
             raise NotFoundError("participant user not found")
 
-        existing_membership = self.team_repo.get_team_member(team_id=team_id, user_id=participant_user_id)
-        if existing_membership is not None:
+        try:
+            created_membership = self.team_repo.add_team_member(team_id=team_id, user_id=participant_user_id)
+        except IntegrityError:
+            if hasattr(self.team_repo, "db"):
+                self.team_repo.db.rollback()
             logger.error(
                 "team add participant blocked: membership already exists for team_id=%s user_id=%s",
                 team_id,
@@ -63,7 +64,6 @@ class TeamService:
             )
             raise ConflictError("participant is already a member of this team")
 
-        created_membership = self.team_repo.add_team_member(team_id=team_id, user_id=participant_user_id)
         logger.info(
             "team add participant service completed for team_id=%s participant_user_id=%s",
             team_id,
@@ -79,11 +79,7 @@ class TeamService:
 
     def ListTeamParticipants(self, *, current_user_id: int, team_id: int) -> list[TeamMember]:
         """Return members for one team if requester belongs to that team."""
-        team = self.team_repo.get_team_by_id(team_id)
-        if team is None:
-            logger.error("team list participants blocked: team not found for team_id=%s", team_id)
-            raise NotFoundError("team not found")
-
+        self._get_team_or_raise(team_id)
         self.AssertUserBelongsToTeam(team_id=team_id, user_id=current_user_id)
         team_members = self.team_repo.list_team_members(team_id)
         logger.info(
@@ -95,6 +91,7 @@ class TeamService:
 
     def AssertUserBelongsToTeam(self, *, team_id: int, user_id: int) -> None:
         """Raise an error when one user is not a member of the requested team."""
+        self._get_team_or_raise(team_id)
         membership = self.team_repo.get_team_member(team_id=team_id, user_id=user_id)
         if membership is None:
             logger.error(
@@ -106,5 +103,17 @@ class TeamService:
 
     def AssertParticipantsBelongToTeam(self, *, team_id: int, participant_user_ids: list[int]) -> None:
         """Raise when any participant is not a member of the requested team."""
+        self._get_team_or_raise(team_id)
         for participant_user_id in participant_user_ids:
-            self.AssertUserBelongsToTeam(team_id=team_id, user_id=participant_user_id)
+            membership = self.team_repo.get_team_member(team_id=team_id, user_id=participant_user_id)
+            if membership is None:
+                logger.error("team participant membership check failed for team_id=%s", team_id)
+                raise ForbiddenError("one or more participants are not members of this team")
+
+    def _get_team_or_raise(self, team_id: int) -> Team:
+        """Get one team or raise when not found."""
+        team = self.team_repo.get_team_by_id(team_id)
+        if team is None:
+            logger.error("team lookup blocked: team not found for team_id=%s", team_id)
+            raise NotFoundError("team not found")
+        return team

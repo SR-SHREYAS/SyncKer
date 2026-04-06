@@ -41,16 +41,22 @@ class TeamRepository:
         return list(self.db.execute(stmt).scalars().all())
 
     def add_team_member(self, *, team_id: int, user_id: int) -> TeamMember:
-        """Insert one team membership."""
+        """Insert one team membership and return it with user relation loaded."""
         membership = TeamMember(team_id=team_id, user_id=user_id)
         self.db.add(membership)
         self.db.commit()
         self.db.refresh(membership)
-        return membership
+        hydrated_membership = self.get_team_member_with_user_by_id(membership.id)
+        return hydrated_membership or membership
 
     def get_team_member(self, *, team_id: int, user_id: int) -> TeamMember | None:
         """Fetch one team membership by team and user ids."""
         stmt = select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+        return self.db.execute(stmt).scalar_one_or_none()
+
+    def get_team_member_with_user_by_id(self, team_member_id: int) -> TeamMember | None:
+        """Fetch one team membership with user details loaded."""
+        stmt = select(TeamMember).options(joinedload(TeamMember.user)).where(TeamMember.id == team_member_id)
         return self.db.execute(stmt).scalar_one_or_none()
 
     def list_team_members(self, team_id: int) -> list[TeamMember]:

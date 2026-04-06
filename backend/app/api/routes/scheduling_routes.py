@@ -14,12 +14,14 @@ from app.repositories.skill_repo import SkillRepository
 from app.repositories.suggestion_repo import SuggestionRepository
 from app.repositories.task_repo import TaskRepository
 from app.repositories.team_repo import TeamRepository
+from app.repositories.user_repo import UserRepository
 from app.schemas.scheduling import (
     SessionSuggestionResponse,
     SuggestionGenerationRequest,
     SuggestionStatusUpdateRequest,
 )
 from app.services.scheduling_service import SchedulingService
+from app.services.team_service import TeamService
 
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
@@ -32,6 +34,8 @@ def get_scheduling_handler(db: Annotated[Session, Depends(get_db)]) -> Schedulin
     routine_repo = RoutineRepository(db)
     skill_repo = SkillRepository(db)
     team_repo = TeamRepository(db)
+    user_repo = UserRepository(db)
+    team_service = TeamService(team_repo, user_repo)
     scheduler_engine = SchedulerEngine()
     scheduling_service = SchedulingService(
         suggestion_repo,
@@ -40,7 +44,7 @@ def get_scheduling_handler(db: Annotated[Session, Depends(get_db)]) -> Schedulin
         availability_repo,
         routine_repo,
         skill_repo,
-        team_repo,
+        team_service,
     )
     return SchedulingHandler(scheduling_service)
 

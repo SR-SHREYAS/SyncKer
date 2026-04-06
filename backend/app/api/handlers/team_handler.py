@@ -1,6 +1,6 @@
 """Team workspace request handlers."""
 
-from app.core.exceptions import AppError, NotFoundError
+from app.core.exceptions import AppError, InternalServerError
 from app.schemas.team import (
     TeamAddParticipantRequest,
     TeamMemberResponse,
@@ -64,14 +64,7 @@ class TeamHandler:
                 team_id=team_id,
                 participant_user_id=payload.participant_user_id,
             )
-            refreshed_members = self.team_service.ListTeamParticipants(
-                current_user_id=current_user_id,
-                team_id=team_id,
-            )
-            matched_member = next((item for item in refreshed_members if item.id == added_member.id), None)
-            if matched_member is None:
-                raise NotFoundError("new team member not found after creation")
-            member_response = self._build_team_member_response(matched_member)
+            member_response = self._build_team_member_response(added_member)
             logger.info(
                 "team addTeamParticipant handled for user_id=%s team_id=%s participant_user_id=%s",
                 current_user_id,
@@ -108,7 +101,7 @@ class TeamHandler:
         """Shape team membership output with user identity fields."""
         user = getattr(member, "user", None)
         if user is None:
-            raise NotFoundError("team member user details not found")
+            raise InternalServerError("team member user relationship not loaded")
         return TeamMemberResponse(
             team_member_id=getattr(member, "id"),
             team_id=getattr(member, "team_id"),
