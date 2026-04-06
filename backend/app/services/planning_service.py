@@ -48,38 +48,40 @@ class PlanningService:
             deadline_at=deadline_at,
             skill_id=skill_id,
         )
-        logger.info("task create service completed for user_id=%s task_id=%s", user_id, task.id)
+        logger.info("task create service completed")
         return task
 
     def ListPlanningTasks(self, user_id: int) -> list[Task]:
         """Return all tasks owned by the current user."""
         tasks = self.task_repo.list_tasks_by_user(user_id)
-        logger.info("task list service completed for user_id=%s count=%s", user_id, len(tasks))
+        logger.info("task list service completed")
         return tasks
 
     def UpdatePlanningTask(self, user_id: int, task_id: int, **updates: object) -> Task:
         """Update one owned task."""
         task = self.task_repo.get_task_by_id(task_id)
         if task is None or task.user_id != user_id:
-            logger.error("task update blocked: task not found for user_id=%s task_id=%s", user_id, task_id)
+            logger.error("task update blocked: task not found")
             raise NotFoundError("task not found")
 
-        filtered_updates = {field: value for field, value in updates.items() if value is not None}
+        filtered_updates = {
+            field: value for field, value in updates.items() if value is not None
+        }
         if filtered_updates:
             task = self.task_repo.update_task(task, **filtered_updates)
 
-        logger.info("task update service completed for user_id=%s task_id=%s", user_id, task_id)
+        logger.info("task update service completed")
         return task
 
     def DeletePlanningTask(self, user_id: int, task_id: int) -> None:
         """Delete one owned task."""
         task = self.task_repo.get_task_by_id(task_id)
         if task is None or task.user_id != user_id:
-            logger.error("task delete blocked: task not found for user_id=%s task_id=%s", user_id, task_id)
+            logger.error("task delete blocked: task not found")
             raise NotFoundError("task not found")
 
         self.task_repo.delete_task(task)
-        logger.info("task delete service completed for user_id=%s task_id=%s", user_id, task_id)
+        logger.info("task delete service completed")
 
     def CreateAvailabilityBlock(
         self,
@@ -100,62 +102,40 @@ class PlanningService:
             is_recurring=is_recurring,
             specific_date=specific_date,
         )
-        logger.info(
-            "availability create service completed for user_id=%s block_id=%s",
-            user_id,
-            block.id,
-        )
+        logger.info("availability create service completed")
         return block
 
     def ListAvailabilityBlocks(self, user_id: int) -> list[AvailabilityBlock]:
         """Return all availability blocks owned by the current user."""
         blocks = self.availability_repo.list_blocks_by_user(user_id)
-        logger.info(
-            "availability list service completed for user_id=%s count=%s",
-            user_id,
-            len(blocks),
-        )
+        logger.info("availability list service completed")
         return blocks
 
     def UpdateAvailabilityBlock(self, user_id: int, block_id: int, **updates: object) -> AvailabilityBlock:
         """Update one owned availability block."""
         block = self.availability_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
-            logger.error(
-                "availability update blocked: block not found for user_id=%s block_id=%s",
-                user_id,
-                block_id,
-            )
+            logger.error("availability update blocked: block not found")
             raise NotFoundError("availability block not found")
 
-        filtered_updates = {field: value for field, value in updates.items() if value is not None}
+        filtered_updates = {
+            field: value for field, value in updates.items() if value is not None
+        }
         if filtered_updates:
             block = self.availability_repo.update_block(block, **filtered_updates)
 
-        logger.info(
-            "availability update service completed for user_id=%s block_id=%s",
-            user_id,
-            block_id,
-        )
+        logger.info("availability update service completed")
         return block
 
     def DeleteAvailabilityBlock(self, user_id: int, block_id: int) -> None:
         """Delete one owned availability block."""
         block = self.availability_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
-            logger.error(
-                "availability delete blocked: block not found for user_id=%s block_id=%s",
-                user_id,
-                block_id,
-            )
+            logger.error("availability delete blocked: block not found")
             raise NotFoundError("availability block not found")
 
         self.availability_repo.delete_block(block)
-        logger.info(
-            "availability delete service completed for user_id=%s block_id=%s",
-            user_id,
-            block_id,
-        )
+        logger.info("availability delete service completed")
 
     def CreateRoutineBlock(
         self,
@@ -178,43 +158,37 @@ class PlanningService:
             is_recurring=is_recurring,
             specific_date=specific_date,
         )
-        logger.info("routine create service completed for user_id=%s block_id=%s", user_id, block.id)
+        logger.info("routine create service completed")
         return block
 
     def ListRoutineBlocks(self, user_id: int) -> list[RoutineBlock]:
         """Return all routine blocks owned by the current user."""
         blocks = self.routine_repo.list_blocks_by_user(user_id)
-        logger.info("routine list service completed for user_id=%s count=%s", user_id, len(blocks))
+        logger.info("routine list service completed")
         return blocks
 
     def UpdateRoutineBlock(self, user_id: int, block_id: int, **updates: object) -> RoutineBlock:
         """Update one owned routine block."""
         block = self.routine_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
-            logger.error(
-                "routine update blocked: block not found for user_id=%s block_id=%s",
-                user_id,
-                block_id,
-            )
+            logger.error("routine update blocked: block not found")
             raise NotFoundError("routine block not found")
 
-        filtered_updates = {field: value for field, value in updates.items() if value is not None}
+        filtered_updates = {
+            field: value for field, value in updates.items() if value is not None
+        }
         if filtered_updates:
             block = self.routine_repo.update_block(block, **filtered_updates)
 
-        logger.info("routine update service completed for user_id=%s block_id=%s", user_id, block_id)
+        logger.info("routine update service completed")
         return block
 
     def DeleteRoutineBlock(self, user_id: int, block_id: int) -> None:
         """Delete one owned routine block."""
         block = self.routine_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
-            logger.error(
-                "routine delete blocked: block not found for user_id=%s block_id=%s",
-                user_id,
-                block_id,
-            )
+            logger.error("routine delete blocked: block not found")
             raise NotFoundError("routine block not found")
 
         self.routine_repo.delete_block(block)
-        logger.info("routine delete service completed for user_id=%s block_id=%s", user_id, block_id)
+        logger.info("routine delete service completed")

@@ -14,7 +14,9 @@ class Profile(TimestampMixin, Base):
     __tablename__ = "profiles"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True, nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), unique=True, nullable=False
+    )
     full_name: Mapped[str] = mapped_column(String(120), nullable=False)
     bio: Mapped[str | None] = mapped_column(Text, nullable=True)
     role: Mapped[ProfileRole] = mapped_column(

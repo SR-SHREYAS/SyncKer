@@ -15,7 +15,9 @@ class RoutineBlock(TimestampMixin, Base):
     __tablename__ = "routine_blocks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), nullable=False, index=True
+    )
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_time: Mapped[time] = mapped_column(Time, nullable=False)

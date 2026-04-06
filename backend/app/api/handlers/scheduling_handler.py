@@ -9,6 +9,7 @@ from app.schemas.scheduling import (
 from app.services.scheduling_service import SchedulingService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
+    ensure_id_in_list,
     ensure_optional_id_is_positive,
     ensure_participant_ids_list,
     ensure_positive_id,
@@ -31,13 +32,21 @@ class SchedulingHandler:
         """Handle suggestion generation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
+            ensure_positive_id(payload.team_id, field_name="team_id")
             ensure_optional_id_is_positive(payload.skill_id, field_name="skill_id")
             ensure_participant_ids_list(
                 payload.participant_user_ids,
                 context="suggestion generation",
             )
+            ensure_id_in_list(
+                value=user_id,
+                values=payload.participant_user_ids,
+                field_name="current_user_id",
+                context="suggestion generation",
+            )
 
             created_suggestion = self.scheduling_service.GenerateSchedulingSuggestion(
+                team_id=payload.team_id,
                 generated_for_user_id=user_id,
                 participant_user_ids=payload.participant_user_ids,
                 collaboration_title=payload.collaboration_title,
@@ -54,23 +63,23 @@ class SchedulingHandler:
             )
             return suggestion_response
         except AppError:
-            logger.exception("scheduling generateSchedulingSuggestion failed for user_id=%s", user_id)
+            logger.exception("scheduling generate suggestion handler failed")
             raise
 
     def listSchedulingSuggestions(self, user_id: int) -> list[SessionSuggestionResponse]:
         """Handle suggestion list requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
-            scheduling_suggestions = self.scheduling_service.ListSchedulingSuggestions(user_id)
-            suggestion_responses = [self._build_suggestion_response(item) for item in scheduling_suggestions]
-            logger.info(
-                "scheduling listSchedulingSuggestions handled for user_id=%s count=%s",
-                user_id,
-                len(suggestion_responses),
+            scheduling_suggestions = self.scheduling_service.ListSchedulingSuggestions(
+                user_id
             )
+            suggestion_responses = [
+                self._build_suggestion_response(item) for item in scheduling_suggestions
+            ]
+            logger.info("scheduling list suggestions handler completed")
             return suggestion_responses
         except AppError:
-            logger.exception("scheduling listSchedulingSuggestions failed for user_id=%s", user_id)
+            logger.exception("scheduling list suggestions handler failed")
             raise
 
     def updateSchedulingSuggestionStatus(
@@ -83,10 +92,12 @@ class SchedulingHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(suggestion_id, field_name="suggestion_id")
-            updated_suggestion = self.scheduling_service.UpdateSchedulingSuggestionStatus(
-                user_id,
-                suggestion_id,
-                status=payload.status,
+            updated_suggestion = (
+                self.scheduling_service.UpdateSchedulingSuggestionStatus(
+                    user_id,
+                    suggestion_id,
+                    status=payload.status,
+                )
             )
             suggestion_response = self._build_suggestion_response(updated_suggestion)
             logger.info(
@@ -96,14 +107,12 @@ class SchedulingHandler:
             )
             return suggestion_response
         except AppError:
-            logger.exception(
-                "scheduling updateSchedulingSuggestionStatus failed for user_id=%s suggestion_id=%s",
-                user_id,
-                suggestion_id,
-            )
+            logger.exception("scheduling update suggestion status handler failed")
             raise
 
-    def _build_suggestion_response(self, suggestion: object) -> SessionSuggestionResponse:
+    def _build_suggestion_response(
+        self, suggestion: object
+    ) -> SessionSuggestionResponse:
         """Build a neutral participant-based response for scheduling suggestions."""
         participant_user_ids = getattr(suggestion, "participant_user_ids", None)
         if not participant_user_ids:
@@ -113,9 +122,12 @@ class SchedulingHandler:
             ]
         return SessionSuggestionResponse(
             id=getattr(suggestion, "id"),
+            team_id=getattr(suggestion, "team_id", None),
             generated_for_user_id=getattr(suggestion, "generated_for_user_id"),
             participant_user_ids=list(participant_user_ids),
-            collaboration_title=getattr(suggestion, "collaboration_title", "Collaboration Session"),
+            collaboration_title=getattr(
+                suggestion, "collaboration_title", "Collaboration Session"
+            ),
             skill_id=getattr(suggestion, "skill_id"),
             suggested_start_at=getattr(suggestion, "suggested_start_at"),
             suggested_end_at=getattr(suggestion, "suggested_end_at"),

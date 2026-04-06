@@ -19,14 +19,14 @@ app.include_router(api_router)
 @app.exception_handler(AppError)
 async def handle_app_error(_: Request, exc: AppError):
     """Return controlled application errors with a stable payload."""
-    logger.error("application error: %s", exc.message)
+    logger.error("application error handled")
     return error_response(status_code=exc.status_code, message=exc.message)
 
 
 @app.exception_handler(Exception)
 async def handle_unexpected_error(_: Request, exc: Exception):
     """Return a generic server error for unexpected failures."""
-    logger.exception("unexpected server error: %s", str(exc))
+    logger.exception("unexpected server error handled")
     return error_response(status_code=500, message="internal server error")
 
 

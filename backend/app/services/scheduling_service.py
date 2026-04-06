@@ -9,6 +9,7 @@ from app.repositories.routine_repo import RoutineRepository
 from app.repositories.skill_repo import SkillRepository
 from app.repositories.suggestion_repo import SuggestionRepository
 from app.repositories.task_repo import TaskRepository
+from app.services.team_service import TeamService
 from app.utils.logger import get_logger
 from sqlalchemy.exc import IntegrityError
 
@@ -26,6 +27,7 @@ class SchedulingService:
         availability_repo: AvailabilityRepository,
         routine_repo: RoutineRepository,
         skill_repo: SkillRepository,
+        team_service: TeamService,
     ) -> None:
         self.suggestion_repo = suggestion_repo
         self.scheduler_engine = scheduler_engine
@@ -33,10 +35,12 @@ class SchedulingService:
         self.availability_repo = availability_repo
         self.routine_repo = routine_repo
         self.skill_repo = skill_repo
+        self.team_service = team_service
 
     def GenerateSchedulingSuggestion(
         self,
         *,
+        team_id: int,
         generated_for_user_id: int,
         participant_user_ids: list[int],
         collaboration_title: str,
@@ -46,14 +50,23 @@ class SchedulingService:
         minimum_duration_minutes: int,
     ) -> SessionSuggestion:
         """Generate and save one planning-aware session suggestion."""
+        self._ensure_participants_are_in_team(
+            team_id=team_id,
+            generated_for_user_id=generated_for_user_id,
+            participant_user_ids=participant_user_ids,
+        )
         resolved_skill_id = self._resolve_skill_id(skill_id)
         tasks: list[object] = []
         availability_blocks: list[object] = []
         routine_blocks: list[object] = []
         for participant_user_id in participant_user_ids:
             tasks.extend(self.task_repo.list_tasks_by_user(participant_user_id))
-            availability_blocks.extend(self.availability_repo.list_blocks_by_user(participant_user_id))
-            routine_blocks.extend(self.routine_repo.list_blocks_by_user(participant_user_id))
+            availability_blocks.extend(
+                self.availability_repo.list_blocks_by_user(participant_user_id)
+            )
+            routine_blocks.extend(
+                self.routine_repo.list_blocks_by_user(participant_user_id)
+            )
 
         scheduling_candidate = self.scheduler_engine.generate(
             participant_user_ids=participant_user_ids,
@@ -69,6 +82,7 @@ class SchedulingService:
         participant_one_user_id = participant_user_ids[0]
         participant_two_user_id = participant_user_ids[1]
         suggestion = self.suggestion_repo.create_suggestion(
+            team_id=team_id,
             generated_for_user_id=generated_for_user_id,
             mentor_user_id=participant_one_user_id,
             learner_user_id=participant_two_user_id,
@@ -81,17 +95,29 @@ class SchedulingService:
             status=SuggestionStatus.PENDING,
             explanation=scheduling_candidate["explanation"],
         )
-        logger.info(
-            "scheduling generate service completed for user_id=%s suggestion_id=%s",
-            generated_for_user_id,
-            suggestion.id,
-        )
+        logger.info("scheduling generate service completed")
         return suggestion
+
+    def _ensure_participants_are_in_team(
+        self,
+        *,
+        team_id: int,
+        generated_for_user_id: int,
+        participant_user_ids: list[int],
+    ) -> None:
+        """Ensure scheduling request uses one real team and valid members."""
+        self.team_service.AssertUserBelongsToTeam(
+            team_id=team_id, user_id=generated_for_user_id
+        )
+        self.team_service.AssertParticipantsBelongToTeam(
+            team_id=team_id,
+            participant_user_ids=participant_user_ids,
+        )
 
     def ListSchedulingSuggestions(self, user_id: int) -> list[SessionSuggestion]:
         """Return suggestions generated for the current user."""
         suggestions = self.suggestion_repo.list_suggestions_for_user(user_id)
-        logger.info("scheduling list service completed for user_id=%s count=%s", user_id, len(suggestions))
+        logger.info("scheduling list service completed")
         return suggestions
 
     def UpdateSchedulingSuggestionStatus(
@@ -104,19 +130,11 @@ class SchedulingService:
         """Update the status of one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
         if suggestion is None or suggestion.generated_for_user_id != user_id:
-            logger.error(
-                "scheduling status update blocked: suggestion not found for user_id=%s suggestion_id=%s",
-                user_id,
-                suggestion_id,
-            )
+            logger.error("scheduling status update blocked: suggestion not found")
             raise NotFoundError("suggestion not found")
 
         suggestion = self.suggestion_repo.update_suggestion(suggestion, status=status)
-        logger.info(
-            "scheduling status update service completed for user_id=%s suggestion_id=%s",
-            user_id,
-            suggestion_id,
-        )
+        logger.info("scheduling status update service completed")
         return suggestion
 
     def _resolve_skill_id(self, skill_id: int | None) -> int:

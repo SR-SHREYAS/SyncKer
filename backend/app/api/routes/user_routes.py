@@ -8,7 +8,11 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import CurrentUserId, get_db
 from app.api.handlers.user_handler import UserHandler
 from app.repositories.user_repo import UserRepository
-from app.schemas.profile import ProfileCreateRequest, ProfileResponse, ProfileUpdateRequest
+from app.schemas.profile import (
+    ProfileCreateRequest,
+    ProfileResponse,
+    ProfileUpdateRequest,
+)
 from app.schemas.user import UserResponse, UserUpdateRequest
 from app.services.user_service import UserService
 

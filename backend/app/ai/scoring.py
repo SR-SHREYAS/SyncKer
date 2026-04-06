@@ -14,7 +14,9 @@ def score_candidate(
 
     Earlier valid slots score higher, and relevant urgent tasks push the score up.
     """
-    minutes_from_start = max((suggested_start_at - window_start_at).total_seconds() / 60, 0)
+    minutes_from_start = max(
+        (suggested_start_at - window_start_at).total_seconds() / 60, 0
+    )
     raw_score = 100 - (minutes_from_start / max(minimum_duration_minutes, 15))
     if related_tasks:
         raw_score += min(len(related_tasks) * 5, 15)

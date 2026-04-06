@@ -2,9 +2,19 @@
 
 from datetime import date, datetime, time
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationInfo,
+    field_validator,
+    model_validator,
+)
 
-from app.utils.request_validation import normalize_optional_text, normalize_required_text
+from app.utils.request_validation import (
+    normalize_optional_text,
+    normalize_required_text,
+)
 
 
 class RoutineBlockBase(BaseModel):

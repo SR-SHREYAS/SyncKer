@@ -5,7 +5,10 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
 from app.models.enums import TaskPriority, TaskStatus
-from app.utils.request_validation import normalize_optional_text, normalize_required_text
+from app.utils.request_validation import (
+    normalize_optional_text,
+    normalize_required_text,
+)
 
 
 class TaskBase(BaseModel):

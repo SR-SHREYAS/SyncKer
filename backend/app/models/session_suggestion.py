@@ -16,14 +16,23 @@ class SessionSuggestion(TimestampMixin, Base):
     __tablename__ = "session_suggestions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    generated_for_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    team_id: Mapped[int | None] = mapped_column(
+        ForeignKey("teams.id"), nullable=True, index=True
+    )
+    generated_for_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), nullable=False
+    )
     mentor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     learner_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     participant_user_ids: Mapped[list[int]] = mapped_column(JSON, nullable=False)
     collaboration_title: Mapped[str] = mapped_column(String(180), nullable=False)
     skill_id: Mapped[int] = mapped_column(ForeignKey("skills.id"), nullable=False)
-    suggested_start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    suggested_end_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    suggested_start_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    suggested_end_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     score: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False)
     status: Mapped[SuggestionStatus] = mapped_column(
         Enum(SuggestionStatus, name="suggestion_status"),
@@ -32,5 +41,6 @@ class SessionSuggestion(TimestampMixin, Base):
     )
     explanation: Mapped[str] = mapped_column(Text, nullable=False)
 
+    team = relationship("Team", back_populates="suggestions")
     skill = relationship("Skill", back_populates="suggestions")
     session = relationship("Session", back_populates="suggestion", uselist=False)

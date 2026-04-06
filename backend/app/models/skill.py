@@ -14,7 +14,9 @@ class Skill(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    slug: Mapped[str] = mapped_column(String(120), unique=True, index=True, nullable=False)
+    slug: Mapped[str] = mapped_column(
+        String(120), unique=True, index=True, nullable=False
+    )
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     user_skills = relationship("UserSkill", back_populates="skill")
     tasks = relationship("Task", back_populates="skill")

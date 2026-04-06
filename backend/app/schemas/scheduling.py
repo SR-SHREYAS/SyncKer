@@ -9,6 +9,7 @@ from app.utils.request_validation import normalize_required_text
 
 
 class SuggestionGenerationRequest(BaseModel):
+    team_id: int = Field(gt=0)
     participant_user_ids: list[int] = Field(min_length=2)
     collaboration_title: str = Field(min_length=2, max_length=180)
     skill_id: int | None = None
@@ -24,6 +25,7 @@ class SuggestionGenerationRequest(BaseModel):
 
 class SessionSuggestionResponse(BaseModel):
     id: int
+    team_id: int | None
     generated_for_user_id: int
     participant_user_ids: list[int]
     collaboration_title: str

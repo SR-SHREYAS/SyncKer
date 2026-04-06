@@ -47,10 +47,10 @@ class PlanningHandler:
                 skill_id=payload.skill_id,
             )
             task_response = TaskResponse.model_validate(created_task)
-            logger.info("task createPlanningTask handled for user_id=%s task_id=%s", user_id, created_task.id)
+            logger.info("task create handler completed")
             return task_response
         except AppError:
-            logger.exception("task createPlanningTask failed for user_id=%s", user_id)
+            logger.exception("task create handler failed")
             raise
 
     def listPlanningTasks(self, user_id: int) -> list[TaskResponse]:
@@ -59,10 +59,10 @@ class PlanningHandler:
             ensure_positive_id(user_id, field_name="user_id")
             tasks = self.planning_service.ListPlanningTasks(user_id)
             response = [TaskResponse.model_validate(task) for task in tasks]
-            logger.info("task listPlanningTasks handled for user_id=%s count=%s", user_id, len(response))
+            logger.info("task list handler completed")
             return response
         except AppError:
-            logger.exception("task listPlanningTasks failed for user_id=%s", user_id)
+            logger.exception("task list handler failed")
             raise
 
     def updatePlanningTask(self, user_id: int, task_id: int, payload: TaskUpdateRequest) -> TaskResponse:
@@ -96,10 +96,10 @@ class PlanningHandler:
                 skill_id=payload.skill_id,
             )
             task_response = TaskResponse.model_validate(updated_task)
-            logger.info("task updatePlanningTask handled for user_id=%s task_id=%s", user_id, task_id)
+            logger.info("task update handler completed")
             return task_response
         except AppError:
-            logger.exception("task updatePlanningTask failed for user_id=%s task_id=%s", user_id, task_id)
+            logger.exception("task update handler failed")
             raise
 
     def deletePlanningTask(self, user_id: int, task_id: int) -> None:
@@ -108,9 +108,9 @@ class PlanningHandler:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(task_id, field_name="task_id")
             self.planning_service.DeletePlanningTask(user_id, task_id)
-            logger.info("task deletePlanningTask handled for user_id=%s task_id=%s", user_id, task_id)
+            logger.info("task delete handler completed")
         except AppError:
-            logger.exception("task deletePlanningTask failed for user_id=%s task_id=%s", user_id, task_id)
+            logger.exception("task delete handler failed")
             raise
 
     def createAvailabilityBlock(
@@ -131,10 +131,10 @@ class PlanningHandler:
                 specific_date=payload.specific_date,
             )
             response = AvailabilityBlockResponse.model_validate(block)
-            logger.info("availability createAvailabilityBlock handled for user_id=%s block_id=%s", user_id, block.id)
+            logger.info("availability create handler completed")
             return response
         except AppError:
-            logger.exception("availability createAvailabilityBlock failed for user_id=%s", user_id)
+            logger.exception("availability create handler failed")
             raise
 
     def listAvailabilityBlocks(self, user_id: int) -> list[AvailabilityBlockResponse]:
@@ -142,11 +142,13 @@ class PlanningHandler:
         try:
             ensure_positive_id(user_id, field_name="user_id")
             blocks = self.planning_service.ListAvailabilityBlocks(user_id)
-            response = [AvailabilityBlockResponse.model_validate(block) for block in blocks]
-            logger.info("availability listAvailabilityBlocks handled for user_id=%s count=%s", user_id, len(response))
+            response = [
+                AvailabilityBlockResponse.model_validate(block) for block in blocks
+            ]
+            logger.info("availability list handler completed")
             return response
         except AppError:
-            logger.exception("availability listAvailabilityBlocks failed for user_id=%s", user_id)
+            logger.exception("availability list handler failed")
             raise
 
     def updateAvailabilityBlock(
@@ -161,7 +163,13 @@ class PlanningHandler:
             ensure_positive_id(block_id, field_name="block_id")
             ensure_payload_has_updates(
                 payload,
-                field_names=("day_of_week", "start_time", "end_time", "is_recurring", "specific_date"),
+                field_names=(
+                    "day_of_week",
+                    "start_time",
+                    "end_time",
+                    "is_recurring",
+                    "specific_date",
+                ),
             )
             ensure_time_range(
                 start_time=payload.start_time,
@@ -179,10 +187,10 @@ class PlanningHandler:
                 specific_date=payload.specific_date,
             )
             response = AvailabilityBlockResponse.model_validate(block)
-            logger.info("availability updateAvailabilityBlock handled for user_id=%s block_id=%s", user_id, block_id)
+            logger.info("availability update handler completed")
             return response
         except AppError:
-            logger.exception("availability updateAvailabilityBlock failed for user_id=%s block_id=%s", user_id, block_id)
+            logger.exception("availability update handler failed")
             raise
 
     def deleteAvailabilityBlock(self, user_id: int, block_id: int) -> None:
@@ -191,9 +199,9 @@ class PlanningHandler:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(block_id, field_name="block_id")
             self.planning_service.DeleteAvailabilityBlock(user_id, block_id)
-            logger.info("availability deleteAvailabilityBlock handled for user_id=%s block_id=%s", user_id, block_id)
+            logger.info("availability delete handler completed")
         except AppError:
-            logger.exception("availability deleteAvailabilityBlock failed for user_id=%s block_id=%s", user_id, block_id)
+            logger.exception("availability delete handler failed")
             raise
 
     def createRoutineBlock(
@@ -214,10 +222,10 @@ class PlanningHandler:
                 specific_date=payload.specific_date,
             )
             response = RoutineBlockResponse.model_validate(block)
-            logger.info("routine createRoutineBlock handled for user_id=%s block_id=%s", user_id, block.id)
+            logger.info("routine create handler completed")
             return response
         except AppError:
-            logger.exception("routine createRoutineBlock failed for user_id=%s", user_id)
+            logger.exception("routine create handler failed")
             raise
 
     def listRoutineBlocks(self, user_id: int) -> list[RoutineBlockResponse]:
@@ -226,10 +234,10 @@ class PlanningHandler:
             ensure_positive_id(user_id, field_name="user_id")
             blocks = self.planning_service.ListRoutineBlocks(user_id)
             response = [RoutineBlockResponse.model_validate(block) for block in blocks]
-            logger.info("routine listRoutineBlocks handled for user_id=%s count=%s", user_id, len(response))
+            logger.info("routine list handler completed")
             return response
         except AppError:
-            logger.exception("routine listRoutineBlocks failed for user_id=%s", user_id)
+            logger.exception("routine list handler failed")
             raise
 
     def updateRoutineBlock(
@@ -244,7 +252,14 @@ class PlanningHandler:
             ensure_positive_id(block_id, field_name="block_id")
             ensure_payload_has_updates(
                 payload,
-                field_names=("title", "day_of_week", "start_time", "end_time", "is_recurring", "specific_date"),
+                field_names=(
+                    "title",
+                    "day_of_week",
+                    "start_time",
+                    "end_time",
+                    "is_recurring",
+                    "specific_date",
+                ),
             )
             ensure_time_range(
                 start_time=payload.start_time,
@@ -263,10 +278,10 @@ class PlanningHandler:
                 specific_date=payload.specific_date,
             )
             response = RoutineBlockResponse.model_validate(block)
-            logger.info("routine updateRoutineBlock handled for user_id=%s block_id=%s", user_id, block_id)
+            logger.info("routine update handler completed")
             return response
         except AppError:
-            logger.exception("routine updateRoutineBlock failed for user_id=%s block_id=%s", user_id, block_id)
+            logger.exception("routine update handler failed")
             raise
 
     def deleteRoutineBlock(self, user_id: int, block_id: int) -> None:
@@ -275,7 +290,7 @@ class PlanningHandler:
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(block_id, field_name="block_id")
             self.planning_service.DeleteRoutineBlock(user_id, block_id)
-            logger.info("routine deleteRoutineBlock handled for user_id=%s block_id=%s", user_id, block_id)
+            logger.info("routine delete handler completed")
         except AppError:
-            logger.exception("routine deleteRoutineBlock failed for user_id=%s block_id=%s", user_id, block_id)
+            logger.exception("routine delete handler failed")
             raise
