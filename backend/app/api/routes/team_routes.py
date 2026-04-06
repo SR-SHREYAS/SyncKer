@@ -9,7 +9,12 @@ from app.api.handlers.team_handler import TeamHandler
 from app.core.dependencies import CurrentUserId, get_db
 from app.repositories.team_repo import TeamRepository
 from app.repositories.user_repo import UserRepository
-from app.schemas.team import TeamAddParticipantRequest, TeamMemberResponse, TeamCreateRequest, TeamResponse
+from app.schemas.team import (
+    TeamAddParticipantRequest,
+    TeamMemberResponse,
+    TeamCreateRequest,
+    TeamResponse,
+)
 from app.services.team_service import TeamService
 
 router = APIRouter(prefix="/teams", tags=["teams"])

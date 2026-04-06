@@ -18,7 +18,9 @@ class AvailabilityBlock(TimestampMixin, Base):
     __tablename__ = "availability_blocks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), nullable=False, index=True
+    )
     day_of_week: Mapped[int | None] = mapped_column(Integer, nullable=True)
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)

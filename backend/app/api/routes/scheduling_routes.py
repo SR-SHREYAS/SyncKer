@@ -80,4 +80,6 @@ def update_suggestion_status(
     handler: Annotated[SchedulingHandler, Depends(get_scheduling_handler)],
 ) -> SessionSuggestionResponse:
     """Update the status of one owned suggestion."""
-    return handler.updateSchedulingSuggestionStatus(current_user_id, suggestion_id, payload)
+    return handler.updateSchedulingSuggestionStatus(
+        current_user_id, suggestion_id, payload
+    )

@@ -19,17 +19,19 @@ class SkillService:
         """Create a new skill if its slug is still available."""
         existing_skill = self.skill_repo.get_skill_by_slug(slug)
         if existing_skill is not None:
-            logger.error("skill create blocked: slug already exists for slug=%s", slug)
+            logger.error("skill create blocked: slug already exists")
             raise ConflictError("skill slug already exists")
 
-        skill = self.skill_repo.create_skill(name=name, slug=slug, description=description)
-        logger.info("skill create service completed for skill_id=%s", skill.id)
+        skill = self.skill_repo.create_skill(
+            name=name, slug=slug, description=description
+        )
+        logger.info("skill create service completed")
         return skill
 
     def ListSkillCatalog(self) -> list[Skill]:
         """Return the current skill catalog."""
         skills = self.skill_repo.list_skills()
-        logger.info("skill list service completed with count=%s", len(skills))
+        logger.info("skill list service completed")
         return skills
 
     def AttachSkillToUser(
@@ -44,16 +46,14 @@ class SkillService:
         """Link one skill to one user for learning or teaching."""
         skill = self.skill_repo.get_skill_by_id(skill_id)
         if skill is None:
-            logger.error("user skill attach blocked: skill not found for skill_id=%s", skill_id)
+            logger.error("user skill attach blocked: skill not found")
             raise NotFoundError("skill not found")
 
-        existing_user_skill = self.skill_repo.get_user_skill(user_id=user_id, skill_id=skill_id)
+        existing_user_skill = self.skill_repo.get_user_skill(
+            user_id=user_id, skill_id=skill_id
+        )
         if existing_user_skill is not None:
-            logger.error(
-                "user skill attach blocked: relation already exists for user_id=%s skill_id=%s",
-                user_id,
-                skill_id,
-            )
+            logger.error("user skill attach blocked: relation already exists")
             raise ConflictError("user skill already exists")
 
         user_skill = self.skill_repo.attach_skill_to_user(
@@ -63,15 +63,11 @@ class SkillService:
             is_teaching=is_teaching,
             is_learning=is_learning,
         )
-        logger.info(
-            "user skill attach service completed for user_id=%s skill_id=%s",
-            user_id,
-            skill_id,
-        )
+        logger.info("user skill attach service completed")
         return user_skill
 
     def ListUserSkills(self, user_id: int) -> list[UserSkill]:
         """Return all skills linked to one user."""
         user_skills = self.skill_repo.list_user_skills(user_id)
-        logger.info("user skill list service completed for user_id=%s count=%s", user_id, len(user_skills))
+        logger.info("user skill list service completed")
         return user_skills

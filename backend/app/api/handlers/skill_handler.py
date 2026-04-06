@@ -25,35 +25,40 @@ class SkillHandler:
     def createSkillCatalogEntry(self, payload: SkillCreateRequest) -> SkillResponse:
         """Handle skill creation requests."""
         try:
+            # Call service layer.
             created_skill = self.skill_service.CreateSkillCatalogEntry(
                 name=payload.name,
                 slug=payload.slug,
                 description=payload.description,
             )
             skill_response = SkillResponse.model_validate(created_skill)
-            logger.info("skill createSkillCatalogEntry handled for skill_id=%s", created_skill.id)
+            logger.info("skill create catalog entry handler completed")
             return skill_response
         except AppError:
-            logger.exception("skill createSkillCatalogEntry failed for slug=%s", payload.slug)
+            logger.exception("skill create catalog entry handler failed")
             raise
 
     def listSkillCatalog(self) -> list[SkillResponse]:
         """Handle skill catalog listing requests."""
         try:
             skill_catalog = self.skill_service.ListSkillCatalog()
-            skill_responses = [SkillResponse.model_validate(skill) for skill in skill_catalog]
-            logger.info("skill listSkillCatalog handled with count=%s", len(skill_responses))
+            skill_responses = [
+                SkillResponse.model_validate(skill) for skill in skill_catalog
+            ]
+            logger.info("skill list catalog handler completed")
             return skill_responses
         except AppError:
-            logger.exception("skill listSkillCatalog failed")
+            logger.exception("skill list catalog handler failed")
             raise
 
     def attachSkillToCurrentUser(self, user_id: int, payload: UserSkillCreateRequest) -> UserSkillResponse:
         """Handle user-skill creation requests."""
         try:
+            # Validate request input.
             ensure_positive_id(user_id, field_name="user_id")
             ensure_positive_id(payload.skill_id, field_name="skill_id")
 
+            # Call service layer.
             user_skill_relation = self.skill_service.AttachSkillToUser(
                 user_id=user_id,
                 skill_id=payload.skill_id,
@@ -62,35 +67,26 @@ class SkillHandler:
                 is_learning=payload.is_learning,
             )
             user_skill_response = UserSkillResponse.model_validate(user_skill_relation)
-            logger.info(
-                "user skill attachSkillToCurrentUser handled for user_id=%s skill_id=%s",
-                user_id,
-                payload.skill_id,
-            )
+            logger.info("user skill attach to current user handler completed")
             return user_skill_response
         except AppError:
-            logger.exception(
-                "user skill attachSkillToCurrentUser failed for user_id=%s skill_id=%s",
-                user_id,
-                payload.skill_id,
-            )
+            logger.exception("user skill attach to current user handler failed")
             raise
 
     def listCurrentUserSkills(self, user_id: int) -> list[UserSkillResponse]:
         """Handle user-skill listing requests."""
         try:
+            # Validate request input.
             ensure_positive_id(user_id, field_name="user_id")
+
+            # Call service layer.
             user_skill_relations = self.skill_service.ListUserSkills(user_id)
             user_skill_responses = [
                 UserSkillResponse.model_validate(user_skill_relation)
                 for user_skill_relation in user_skill_relations
             ]
-            logger.info(
-                "user skill listCurrentUserSkills handled for user_id=%s count=%s",
-                user_id,
-                len(user_skill_responses),
-            )
+            logger.info("user skill list current user skills handler completed")
             return user_skill_responses
         except AppError:
-            logger.exception("user skill listCurrentUserSkills failed for user_id=%s", user_id)
+            logger.exception("user skill list current user skills handler failed")
             raise

@@ -7,7 +7,9 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     app_name: str = "SyncSkill"
-    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/syncskill"
+    database_url: str = (
+        "postgresql+psycopg://postgres:postgres@localhost:5432/syncskill"
+    )
     jwt_secret_key: str = "change-me-please-use-a-long-secret-key"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60

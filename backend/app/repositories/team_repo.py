@@ -51,12 +51,18 @@ class TeamRepository:
 
     def get_team_member(self, *, team_id: int, user_id: int) -> TeamMember | None:
         """Fetch one team membership by team and user ids."""
-        stmt = select(TeamMember).where(TeamMember.team_id == team_id, TeamMember.user_id == user_id)
+        stmt = select(TeamMember).where(
+            TeamMember.team_id == team_id, TeamMember.user_id == user_id
+        )
         return self.db.execute(stmt).scalar_one_or_none()
 
     def get_team_member_with_user_by_id(self, team_member_id: int) -> TeamMember | None:
         """Fetch one team membership with user details loaded."""
-        stmt = select(TeamMember).options(joinedload(TeamMember.user)).where(TeamMember.id == team_member_id)
+        stmt = (
+            select(TeamMember)
+            .options(joinedload(TeamMember.user))
+            .where(TeamMember.id == team_member_id)
+        )
         return self.db.execute(stmt).scalar_one_or_none()
 
     def list_team_members(self, team_id: int) -> list[TeamMember]:

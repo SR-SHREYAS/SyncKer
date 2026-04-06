@@ -25,8 +25,12 @@ def build_blocked_ranges(
 
             blocked_ranges.append(
                 (
-                    datetime.combine(current_date, block.start_time, tzinfo=window_start_at.tzinfo),
-                    datetime.combine(current_date, block.end_time, tzinfo=window_start_at.tzinfo),
+                    datetime.combine(
+                        current_date, block.start_time, tzinfo=window_start_at.tzinfo
+                    ),
+                    datetime.combine(
+                        current_date, block.end_time, tzinfo=window_start_at.tzinfo
+                    ),
                 )
             )
         current_date += timedelta(days=1)
@@ -61,9 +65,13 @@ def pick_first_common_slot(
             elif block.specific_date != current_date:
                 continue
 
-            slot_start = datetime.combine(current_date, block.start_time, tzinfo=window_start_at.tzinfo)
+            slot_start = datetime.combine(
+                current_date, block.start_time, tzinfo=window_start_at.tzinfo
+            )
             slot_end = slot_start + timedelta(minutes=minimum_duration_minutes)
-            block_end = datetime.combine(current_date, block.end_time, tzinfo=window_start_at.tzinfo)
+            block_end = datetime.combine(
+                current_date, block.end_time, tzinfo=window_start_at.tzinfo
+            )
 
             if slot_start < window_start_at:
                 slot_start = window_start_at
@@ -72,7 +80,9 @@ def pick_first_common_slot(
             if slot_end > block_end or slot_end > window_end_at:
                 continue
 
-            if is_slot_blocked(slot_start=slot_start, slot_end=slot_end, blocked_ranges=blocked_ranges):
+            if is_slot_blocked(
+                slot_start=slot_start, slot_end=slot_end, blocked_ranges=blocked_ranges
+            ):
                 continue
 
             return slot_start, slot_end

@@ -29,30 +29,30 @@ class UserService:
         """Return one user with its profile data."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
-            logger.error("user details blocked: user not found for user_id=%s", user_id)
+            logger.error("user details blocked: user not found")
             raise NotFoundError("user not found")
-        logger.info("user details service completed for user_id=%s", user_id)
+        logger.info("user details service completed")
         return UserDetailsResult(user=user, profile=user.profile)
 
     def UpdateCurrentUser(self, user_id: int, *, username: str | None = None) -> UserDetailsResult:
         """Update allowed user fields after validation."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
-            logger.error("user update blocked: user not found for user_id=%s", user_id)
+            logger.error("user update blocked: user not found")
             raise NotFoundError("user not found")
 
         updates: dict[str, object] = {}
         if username is not None and username != user.username:
             existing_user = self.user_repo.get_by_username(username)
             if existing_user is not None and existing_user.id != user_id:
-                logger.error("user update blocked: username already exists for username=%s", username)
+                logger.error("user update blocked: username already exists")
                 raise ConflictError("username is already taken")
             updates["username"] = username
 
         if updates:
             user = self.user_repo.update_user(user, **updates)
 
-        logger.info("user update service completed for user_id=%s", user_id)
+        logger.info("user update service completed")
         return UserDetailsResult(user=user, profile=user.profile)
 
     def CreateCurrentUserProfile(
@@ -67,12 +67,12 @@ class UserService:
         """Create the profile for one existing user."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
-            logger.error("profile create blocked: user not found for user_id=%s", user_id)
+            logger.error("profile create blocked: user not found")
             raise NotFoundError("user not found")
 
         existing_profile = self.user_repo.get_profile_by_user_id(user_id)
         if existing_profile is not None:
-            logger.error("profile create blocked: profile already exists for user_id=%s", user_id)
+            logger.error("profile create blocked: profile already exists")
             raise ConflictError("profile already exists")
 
         profile = self.user_repo.create_profile(
@@ -82,7 +82,7 @@ class UserService:
             role=role,
             timezone=timezone,
         )
-        logger.info("profile create service completed for user_id=%s", user_id)
+        logger.info("profile create service completed")
         return profile
 
     def UpdateCurrentUserProfile(
@@ -97,12 +97,12 @@ class UserService:
         """Update profile fields for one existing user."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
-            logger.error("profile update blocked: user not found for user_id=%s", user_id)
+            logger.error("profile update blocked: user not found")
             raise NotFoundError("user not found")
 
         profile = self.user_repo.get_profile_by_user_id(user_id)
         if profile is None:
-            logger.error("profile update blocked: profile not found for user_id=%s", user_id)
+            logger.error("profile update blocked: profile not found")
             raise NotFoundError("profile not found")
 
         updates: dict[str, object] = {}
@@ -118,5 +118,5 @@ class UserService:
         if updates:
             profile = self.user_repo.update_profile(profile, **updates)
 
-        logger.info("profile update service completed for user_id=%s", user_id)
+        logger.info("profile update service completed")
         return profile

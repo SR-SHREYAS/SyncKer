@@ -46,12 +46,20 @@ class _FakeTeamRepo:
         return self.teams.get(team_id)
 
     def list_teams_for_user(self, user_id: int):
-        team_ids = [team_id for (team_id, member_user_id) in self.memberships if member_user_id == user_id]
+        team_ids = [
+            team_id
+            for (team_id, member_user_id) in self.memberships
+            if member_user_id == user_id
+        ]
         return [self.teams[item] for item in team_ids]
 
     def add_team_member(self, *, team_id: int, user_id: int):
         if (team_id, user_id) in self.memberships:
-            raise IntegrityError("duplicate membership", params=None, orig=Exception("duplicate membership"))
+            raise IntegrityError(
+                "duplicate membership",
+                params=None,
+                orig=Exception("duplicate membership"),
+            )
         membership = SimpleNamespace(
             id=self._next_membership_id,
             team_id=team_id,
@@ -66,7 +74,11 @@ class _FakeTeamRepo:
         return self.memberships.get((team_id, user_id))
 
     def list_team_members(self, team_id: int):
-        return [item for (member_team_id, _), item in self.memberships.items() if member_team_id == team_id]
+        return [
+            item
+            for (member_team_id, _), item in self.memberships.items()
+            if member_team_id == team_id
+        ]
 
 
 class _FakeSuggestionRepo:
@@ -129,7 +141,9 @@ def test_create_team_workspace_adds_owner_membership() -> None:
     user_repo = _FakeUserRepo()
     service = TeamService(team_repo, user_repo)
 
-    team = service.CreateTeamWorkspace(current_user_id=1, name="Core Team", description="MVP workspace")
+    team = service.CreateTeamWorkspace(
+        current_user_id=1, name="Core Team", description="MVP workspace"
+    )
 
     assert team.id == 1
     assert team.owner_user_id == 1
@@ -140,29 +154,43 @@ def test_add_team_participant_requires_owner() -> None:
     team_repo = _FakeTeamRepo()
     user_repo = _FakeUserRepo()
     service = TeamService(team_repo, user_repo)
-    team = service.CreateTeamWorkspace(current_user_id=1, name="Core Team", description=None)
+    team = service.CreateTeamWorkspace(
+        current_user_id=1, name="Core Team", description=None
+    )
 
     with pytest.raises(ForbiddenError):
-        service.AddTeamParticipant(current_user_id=2, team_id=team.id, participant_user_id=3)
+        service.AddTeamParticipant(
+            current_user_id=2, team_id=team.id, participant_user_id=3
+        )
 
 
 def test_add_team_participant_maps_duplicate_membership_to_conflict_error() -> None:
     team_repo = _FakeTeamRepo()
     user_repo = _FakeUserRepo()
     service = TeamService(team_repo, user_repo)
-    team = service.CreateTeamWorkspace(current_user_id=1, name="Core Team", description=None)
+    team = service.CreateTeamWorkspace(
+        current_user_id=1, name="Core Team", description=None
+    )
 
-    service.AddTeamParticipant(current_user_id=1, team_id=team.id, participant_user_id=2)
+    service.AddTeamParticipant(
+        current_user_id=1, team_id=team.id, participant_user_id=2
+    )
     with pytest.raises(ConflictError):
-        service.AddTeamParticipant(current_user_id=1, team_id=team.id, participant_user_id=2)
+        service.AddTeamParticipant(
+            current_user_id=1, team_id=team.id, participant_user_id=2
+        )
 
 
 def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> None:
     team_repo = _FakeTeamRepo()
     user_repo = _FakeUserRepo()
     team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(current_user_id=1, name="Core Team", description=None)
-    team_service.AddTeamParticipant(current_user_id=1, team_id=team.id, participant_user_id=2)
+    team = team_service.CreateTeamWorkspace(
+        current_user_id=1, name="Core Team", description=None
+    )
+    team_service.AddTeamParticipant(
+        current_user_id=1, team_id=team.id, participant_user_id=2
+    )
 
     scheduling_service = SchedulingService(
         suggestion_repo=_FakeSuggestionRepo(),
@@ -191,8 +219,12 @@ def test_generate_scheduling_suggestion_saves_team_context() -> None:
     team_repo = _FakeTeamRepo()
     user_repo = _FakeUserRepo()
     team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(current_user_id=1, name="Core Team", description=None)
-    team_service.AddTeamParticipant(current_user_id=1, team_id=team.id, participant_user_id=2)
+    team = team_service.CreateTeamWorkspace(
+        current_user_id=1, name="Core Team", description=None
+    )
+    team_service.AddTeamParticipant(
+        current_user_id=1, team_id=team.id, participant_user_id=2
+    )
 
     suggestion_repo = _FakeSuggestionRepo()
     scheduling_service = SchedulingService(

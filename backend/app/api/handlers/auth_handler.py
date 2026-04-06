@@ -23,38 +23,44 @@ class AuthHandler:
     def registerUser(self, payload: RegisterRequest) -> AuthResponse:
         """Handle registration input and shape the auth response."""
         try:
+            # Call service layer.
             auth_result = self.auth_service.RegisterUser(
                 email=payload.email,
                 username=payload.username,
                 password=payload.password,
             )
+
+            # Build response model.
             auth_response = self._build_auth_response(
                 auth_result.user,
                 auth_result.access_token,
                 auth_result.expires_at,
             )
-            logger.info("auth registerUser handled for user_id=%s", auth_result.user.id)
+            logger.info("auth register handler completed")
             return auth_response
         except AppError:
-            logger.exception("auth registerUser failed for email=%s", payload.email)
+            logger.exception("auth register handler failed")
             raise
 
     def loginUser(self, payload: LoginRequest) -> AuthResponse:
         """Handle login input and shape the auth response."""
         try:
+            # Call service layer.
             auth_result = self.auth_service.LoginUser(
                 email=payload.email,
                 password=payload.password,
             )
+
+            # Build response model.
             auth_response = self._build_auth_response(
                 auth_result.user,
                 auth_result.access_token,
                 auth_result.expires_at,
             )
-            logger.info("auth loginUser handled for user_id=%s", auth_result.user.id)
+            logger.info("auth login handler completed")
             return auth_response
         except AppError:
-            logger.exception("auth loginUser failed for email=%s", payload.email)
+            logger.exception("auth login handler failed")
             raise
 
     def _build_auth_response(self, user: object, access_token: str, expires_at: object) -> AuthResponse:

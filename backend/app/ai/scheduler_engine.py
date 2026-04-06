@@ -27,9 +27,7 @@ class SchedulerEngine:
             minimum_duration_minutes,
         )
         related_tasks = [
-            task
-            for task in tasks
-            if task.skill_id is None or task.skill_id == skill_id
+            task for task in tasks if task.skill_id is None or task.skill_id == skill_id
         ]
         suggested_start_at, suggested_end_at = pick_first_common_slot(
             window_start_at=resolved_start,

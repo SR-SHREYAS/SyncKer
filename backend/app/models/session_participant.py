@@ -14,7 +14,9 @@ class SessionParticipant(TimestampMixin, Base):
     """Participants attached to a scheduled session."""
 
     __tablename__ = "session_participants"
-    __table_args__ = (UniqueConstraint("session_id", "user_id", name="uq_session_participant"),)
+    __table_args__ = (
+        UniqueConstraint("session_id", "user_id", name="uq_session_participant"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     session_id: Mapped[int] = mapped_column(ForeignKey("sessions.id"), nullable=False)
@@ -28,6 +30,8 @@ class SessionParticipant(TimestampMixin, Base):
         default=ParticipantResponseStatus.INVITED,
         nullable=False,
     )
-    joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    joined_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     session = relationship("Session", back_populates="participants")

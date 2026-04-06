@@ -30,10 +30,10 @@ class TeamHandler:
                 description=payload.description,
             )
             team_response = TeamResponse.model_validate(created_team)
-            logger.info("team createTeamWorkspace handled for user_id=%s team_id=%s", current_user_id, created_team.id)
+            logger.info("team create workspace handler completed")
             return team_response
         except AppError:
-            logger.exception("team createTeamWorkspace failed for user_id=%s", current_user_id)
+            logger.exception("team create workspace handler failed")
             raise
 
     def listCurrentUserTeams(self, current_user_id: int) -> list[TeamResponse]:
@@ -42,10 +42,10 @@ class TeamHandler:
             ensure_positive_id(current_user_id, field_name="current_user_id")
             teams = self.team_service.ListCurrentUserTeams(current_user_id)
             team_responses = [TeamResponse.model_validate(team) for team in teams]
-            logger.info("team listCurrentUserTeams handled for user_id=%s count=%s", current_user_id, len(team_responses))
+            logger.info("team list current user teams handler completed")
             return team_responses
         except AppError:
-            logger.exception("team listCurrentUserTeams failed for user_id=%s", current_user_id)
+            logger.exception("team list current user teams handler failed")
             raise
 
     def addTeamParticipant(
@@ -58,22 +58,19 @@ class TeamHandler:
         try:
             ensure_positive_id(current_user_id, field_name="current_user_id")
             ensure_positive_id(team_id, field_name="team_id")
-            ensure_positive_id(payload.participant_user_id, field_name="participant_user_id")
+            ensure_positive_id(
+                payload.participant_user_id, field_name="participant_user_id"
+            )
             added_member = self.team_service.AddTeamParticipant(
                 current_user_id=current_user_id,
                 team_id=team_id,
                 participant_user_id=payload.participant_user_id,
             )
             member_response = self._build_team_member_response(added_member)
-            logger.info(
-                "team addTeamParticipant handled for user_id=%s team_id=%s participant_user_id=%s",
-                current_user_id,
-                team_id,
-                payload.participant_user_id,
-            )
+            logger.info("team add participant handler completed")
             return member_response
         except AppError:
-            logger.exception("team addTeamParticipant failed for user_id=%s team_id=%s", current_user_id, team_id)
+            logger.exception("team add participant handler failed")
             raise
 
     def listTeamParticipants(self, current_user_id: int, team_id: int) -> list[TeamMemberResponse]:
@@ -85,16 +82,13 @@ class TeamHandler:
                 current_user_id=current_user_id,
                 team_id=team_id,
             )
-            member_responses = [self._build_team_member_response(member) for member in team_members]
-            logger.info(
-                "team listTeamParticipants handled for user_id=%s team_id=%s count=%s",
-                current_user_id,
-                team_id,
-                len(member_responses),
-            )
+            member_responses = [
+                self._build_team_member_response(member) for member in team_members
+            ]
+            logger.info("team list participants handler completed")
             return member_responses
         except AppError:
-            logger.exception("team listTeamParticipants failed for user_id=%s team_id=%s", current_user_id, team_id)
+            logger.exception("team list participants handler failed")
             raise
 
     def _build_team_member_response(self, member: object) -> TeamMemberResponse:

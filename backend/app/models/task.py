@@ -16,7 +16,9 @@ class Task(TimestampMixin, Base):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"), nullable=False, index=True
+    )
     title: Mapped[str] = mapped_column(String(160), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     priority: Mapped[TaskPriority] = mapped_column(
@@ -29,7 +31,9 @@ class Task(TimestampMixin, Base):
         nullable=False,
     )
     estimated_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
-    deadline_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    deadline_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     skill_id: Mapped[int | None] = mapped_column(ForeignKey("skills.id"), nullable=True)
 
     user = relationship("User", back_populates="tasks")

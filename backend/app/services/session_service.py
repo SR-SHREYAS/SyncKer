@@ -30,19 +30,12 @@ class SessionService:
         """Create a booked session from one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
         if suggestion is None or suggestion.generated_for_user_id != user_id:
-            logger.error(
-                "session create blocked: suggestion not found for user_id=%s suggestion_id=%s",
-                user_id,
-                suggestion_id,
-            )
+            logger.error("session create blocked: suggestion not found")
             raise NotFoundError("suggestion not found")
 
         existing_session = self.session_repo.get_session_by_suggestion_id(suggestion_id)
         if existing_session is not None:
-            logger.error(
-                "session create blocked: session already exists for suggestion_id=%s",
-                suggestion_id,
-            )
+            logger.error("session create blocked: session already exists")
             raise ConflictError("session already exists for this suggestion")
 
         resolved_title = title or suggestion.collaboration_title
@@ -57,29 +50,33 @@ class SessionService:
         )
         participant_user_ids = suggestion.participant_user_ids
         for index, participant_user_id in enumerate(participant_user_ids):
-            participant_role = ParticipantRole.MENTOR if index == 0 else ParticipantRole.LEARNER
+            participant_role = (
+                ParticipantRole.MENTOR if index == 0 else ParticipantRole.LEARNER
+            )
             self.session_repo.create_participant(
                 session_id=session.id,
                 user_id=participant_user_id,
                 participant_role=participant_role,
                 response_status=ParticipantResponseStatus.ACCEPTED,
             )
-        self.suggestion_repo.update_suggestion(suggestion, status=SuggestionStatus.ACCEPTED)
+        self.suggestion_repo.update_suggestion(
+            suggestion, status=SuggestionStatus.ACCEPTED
+        )
         session = self.session_repo.get_session_by_id(session.id) or session
-        logger.info("session create service completed for user_id=%s session_id=%s", user_id, session.id)
+        logger.info("session create service completed")
         return session
 
     def ListSessions(self, user_id: int) -> list[Session]:
         """Return sessions created by the current user."""
         sessions = self.session_repo.list_sessions_for_user(user_id)
-        logger.info("session list service completed for user_id=%s count=%s", user_id, len(sessions))
+        logger.info("session list service completed")
         return sessions
 
     def GetSessionById(self, user_id: int, session_id: int) -> Session:
         """Return one owned session."""
         session = self.session_repo.get_session_by_id(session_id)
         if session is None or session.created_by_user_id != user_id:
-            logger.error("session get blocked: session not found for user_id=%s session_id=%s", user_id, session_id)
+            logger.error("session get blocked: session not found")
             raise NotFoundError("session not found")
-        logger.info("session get service completed for user_id=%s session_id=%s", user_id, session_id)
+        logger.info("session get service completed")
         return session

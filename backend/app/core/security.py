@@ -33,7 +33,9 @@ def verify_password(password: str, password_hash: str) -> bool:
 
     salt = base64.b64decode(salt_text.encode("utf-8"))
     expected_hash = base64.b64decode(hash_text.encode("utf-8"))
-    candidate_hash = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 100_000)
+    candidate_hash = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), salt, 100_000
+    )
     return hmac.compare_digest(candidate_hash, expected_hash)
 
 
