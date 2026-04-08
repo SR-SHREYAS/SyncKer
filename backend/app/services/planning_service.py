@@ -1,5 +1,7 @@
 """Planning business logic."""
 
+from dataclasses import dataclass
+
 from app.core.exceptions import NotFoundError
 from app.models.availability_block import AvailabilityBlock
 from app.models.routine_block import RoutineBlock
@@ -7,36 +9,32 @@ from app.models.task import Task
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.task_repo import TaskRepository
+from app.services.team_service import TeamService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
 
+@dataclass(slots=True)
+class TeamTimetableParticipantResult:
+    """User row for team timetable view."""
+
+    user_id: int
+    username: str
+    email: str
+    tasks: list[Task]
+
+
 class PlanningService:
     """Business rules for tasks, availability blocks, and routine blocks."""
 
-    def __init__(
-        self,
-        task_repo: TaskRepository,
-        availability_repo: AvailabilityRepository,
-        routine_repo: RoutineRepository,
-    ) -> None:
+    def __init__(self, task_repo: TaskRepository, availability_repo: AvailabilityRepository, routine_repo: RoutineRepository, team_service: TeamService) -> None:
         self.task_repo = task_repo
         self.availability_repo = availability_repo
         self.routine_repo = routine_repo
+        self.team_service = team_service
 
-    def CreatePlanningTask(
-        self,
-        *,
-        user_id: int,
-        title: str,
-        description: str | None,
-        priority: str,
-        status: str,
-        estimated_minutes: int,
-        deadline_at: object,
-        skill_id: int | None,
-    ) -> Task:
+    def CreatePlanningTask(self, *, user_id: int, title: str, description: str | None, priority: str, status: str, estimated_minutes: int, deadline_at: object, skill_id: int | None) -> Task:
         """Create one task owned by the current user."""
         task = self.task_repo.create_task(
             user_id=user_id,
@@ -64,9 +62,7 @@ class PlanningService:
             logger.error("task update blocked: task not found")
             raise NotFoundError("task not found")
 
-        filtered_updates = {
-            field: value for field, value in updates.items() if value is not None
-        }
+        filtered_updates = {field: value for field, value in updates.items() if value is not None}
         if filtered_updates:
             task = self.task_repo.update_task(task, **filtered_updates)
 
@@ -83,16 +79,38 @@ class PlanningService:
         self.task_repo.delete_task(task)
         logger.info("task delete service completed")
 
-    def CreateAvailabilityBlock(
-        self,
-        *,
-        user_id: int,
-        day_of_week: int | None,
-        start_time: object,
-        end_time: object,
-        is_recurring: bool,
-        specific_date: object,
-    ) -> AvailabilityBlock:
+    def ListTeamTimetable(self, *, current_user_id: int, team_id: int) -> list[TeamTimetableParticipantResult]:
+        """Return team timetable rows grouped by participant."""
+        team_members = self.team_service.ListTeamParticipants(current_user_id=current_user_id, team_id=team_id)
+
+        for team_member in team_members:
+            user = getattr(team_member, "user", None)
+            if user is None:
+                logger.error("team timetable blocked: team member user details missing")
+                raise NotFoundError("team member user not found")
+
+        member_user_ids = [team_member.user_id for team_member in team_members]
+        all_member_tasks = self.task_repo.list_tasks_by_users(user_ids=member_user_ids)
+        tasks_by_user_id: dict[int, list[Task]] = {}
+        for task in all_member_tasks:
+            tasks_by_user_id.setdefault(task.user_id, []).append(task)
+
+        participant_rows: list[TeamTimetableParticipantResult] = []
+        for team_member in team_members:
+            user = getattr(team_member, "user", None)
+            participant_rows.append(
+                TeamTimetableParticipantResult(
+                    user_id=team_member.user_id,
+                    username=user.username,
+                    email=user.email,
+                    tasks=tasks_by_user_id.get(team_member.user_id, []),
+                )
+            )
+
+        logger.info("team timetable list service completed")
+        return participant_rows
+
+    def CreateAvailabilityBlock(self, *, user_id: int, day_of_week: int | None, start_time: object, end_time: object, is_recurring: bool, specific_date: object) -> AvailabilityBlock:
         """Create one availability block owned by the current user."""
         block = self.availability_repo.create_block(
             user_id=user_id,
@@ -118,9 +136,7 @@ class PlanningService:
             logger.error("availability update blocked: block not found")
             raise NotFoundError("availability block not found")
 
-        filtered_updates = {
-            field: value for field, value in updates.items() if value is not None
-        }
+        filtered_updates = {field: value for field, value in updates.items() if value is not None}
         if filtered_updates:
             block = self.availability_repo.update_block(block, **filtered_updates)
 
@@ -137,17 +153,7 @@ class PlanningService:
         self.availability_repo.delete_block(block)
         logger.info("availability delete service completed")
 
-    def CreateRoutineBlock(
-        self,
-        *,
-        user_id: int,
-        title: str,
-        day_of_week: int | None,
-        start_time: object,
-        end_time: object,
-        is_recurring: bool,
-        specific_date: object,
-    ) -> RoutineBlock:
+    def CreateRoutineBlock(self, *, user_id: int, title: str, day_of_week: int | None, start_time: object, end_time: object, is_recurring: bool, specific_date: object) -> RoutineBlock:
         """Create one routine block owned by the current user."""
         block = self.routine_repo.create_block(
             user_id=user_id,
@@ -174,9 +180,7 @@ class PlanningService:
             logger.error("routine update blocked: block not found")
             raise NotFoundError("routine block not found")
 
-        filtered_updates = {
-            field: value for field, value in updates.items() if value is not None
-        }
+        filtered_updates = {field: value for field, value in updates.items() if value is not None}
         if filtered_updates:
             block = self.routine_repo.update_block(block, **filtered_updates)
 

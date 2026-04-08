@@ -12,9 +12,7 @@ from app.core.security import decode_access_token
 from app.db.session import get_db
 
 
-def get_current_user_id(
-    authorization: Annotated[str | None, Header()] = None,
-) -> int:
+def get_current_user_id(authorization: Annotated[str | None, Header()] = None) -> int:
     """Read the bearer token and extract the current user id."""
     if not authorization:
         raise HTTPException(

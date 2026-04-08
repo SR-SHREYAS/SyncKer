@@ -5,12 +5,7 @@ from datetime import datetime, timedelta
 from app.ai.constraints import is_slot_blocked
 
 
-def build_blocked_ranges(
-    *,
-    routine_blocks: list[object],
-    window_start_at: datetime,
-    window_end_at: datetime,
-) -> list[tuple[datetime, datetime]]:
+def build_blocked_ranges(*, routine_blocks: list[object], window_start_at: datetime, window_end_at: datetime) -> list[tuple[datetime, datetime]]:
     """Build concrete blocked ranges from routine blocks inside the current window."""
     blocked_ranges: list[tuple[datetime, datetime]] = []
     current_date = window_start_at.date()
@@ -38,14 +33,7 @@ def build_blocked_ranges(
     return blocked_ranges
 
 
-def pick_first_common_slot(
-    *,
-    window_start_at: datetime,
-    window_end_at: datetime,
-    minimum_duration_minutes: int,
-    availability_blocks: list[object],
-    routine_blocks: list[object],
-) -> tuple[datetime, datetime]:
+def pick_first_common_slot(*, window_start_at: datetime, window_end_at: datetime, minimum_duration_minutes: int, availability_blocks: list[object], routine_blocks: list[object]) -> tuple[datetime, datetime]:
     """Return the first candidate slot that respects availability and routines.
 
     This MVP version uses recurring and one-off availability blocks plus routine blocks.

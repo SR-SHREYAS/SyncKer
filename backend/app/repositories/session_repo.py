@@ -13,17 +13,7 @@ class SessionRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_session(
-        self,
-        *,
-        session_suggestion_id: int | None,
-        skill_id: int,
-        title: str,
-        scheduled_start_at: object,
-        scheduled_end_at: object,
-        status: str,
-        created_by_user_id: int,
-    ) -> SessionModel:
+    def create_session(self, *, session_suggestion_id: int | None, skill_id: int, title: str, scheduled_start_at: object, scheduled_end_at: object, status: str, created_by_user_id: int) -> SessionModel:
         """Insert one scheduled session."""
         session = SessionModel(
             session_suggestion_id=session_suggestion_id,
@@ -76,15 +66,7 @@ class SessionRepository:
         self.db.refresh(session)
         return session
 
-    def create_participant(
-        self,
-        *,
-        session_id: int,
-        user_id: int,
-        participant_role: str,
-        response_status: str,
-        joined_at: object = None,
-    ) -> SessionParticipant:
+    def create_participant(self, *, session_id: int, user_id: int, participant_role: str, response_status: str, joined_at: object = None) -> SessionParticipant:
         """Insert one participant for a session."""
         participant = SessionParticipant(
             session_id=session_id,

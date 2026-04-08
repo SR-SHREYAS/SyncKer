@@ -18,11 +18,7 @@ logger = get_logger(__name__)
 class SessionService:
     """Business rules for booked sessions."""
 
-    def __init__(
-        self,
-        session_repo: SessionRepository,
-        suggestion_repo: SuggestionRepository,
-    ) -> None:
+    def __init__(self, session_repo: SessionRepository, suggestion_repo: SuggestionRepository) -> None:
         self.session_repo = session_repo
         self.suggestion_repo = suggestion_repo
 

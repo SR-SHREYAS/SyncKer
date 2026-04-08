@@ -48,12 +48,7 @@ class TeamHandler:
             logger.exception("team list current user teams handler failed")
             raise
 
-    def addTeamParticipant(
-        self,
-        current_user_id: int,
-        team_id: int,
-        payload: TeamAddParticipantRequest,
-    ) -> TeamMemberResponse:
+    def addTeamParticipant(self, current_user_id: int, team_id: int, payload: TeamAddParticipantRequest) -> TeamMemberResponse:
         """Handle team participant addition requests."""
         try:
             ensure_positive_id(current_user_id, field_name="current_user_id")

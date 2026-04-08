@@ -107,14 +107,7 @@ def ensure_participant_ids_list(participant_user_ids: list[int], *, context: str
         ensure_positive_id(participant_user_id, field_name="participant_user_ids[]")
 
 
-def ensure_id_in_list(
-    *,
-    value: int,
-    values: list[int],
-    field_name: str,
-    context: str,
-    container_field_name: str = "participant_user_ids",
-) -> None:
+def ensure_id_in_list(*, value: int, values: list[int], field_name: str, context: str, container_field_name: str = "participant_user_ids") -> None:
     """Ensure one id exists inside a related id list."""
     if value not in values:
         raise BadRequestError(

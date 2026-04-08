@@ -34,15 +34,7 @@ class SkillService:
         logger.info("skill list service completed")
         return skills
 
-    def AttachSkillToUser(
-        self,
-        *,
-        user_id: int,
-        skill_id: int,
-        proficiency_level: str,
-        is_teaching: bool = False,
-        is_learning: bool = True,
-    ) -> UserSkill:
+    def AttachSkillToUser(self, *, user_id: int, skill_id: int, proficiency_level: str, is_teaching: bool = False, is_learning: bool = True) -> UserSkill:
         """Link one skill to one user for learning or teaching."""
         skill = self.skill_repo.get_skill_by_id(skill_id)
         if skill is None:

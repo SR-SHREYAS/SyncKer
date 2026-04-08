@@ -36,15 +36,7 @@ class SkillRepository:
         stmt = select(Skill).order_by(Skill.name.asc())
         return list(self.db.execute(stmt).scalars().all())
 
-    def attach_skill_to_user(
-        self,
-        *,
-        user_id: int,
-        skill_id: int,
-        proficiency_level: str,
-        is_teaching: bool = False,
-        is_learning: bool = True,
-    ) -> UserSkill:
+    def attach_skill_to_user(self, *, user_id: int, skill_id: int, proficiency_level: str, is_teaching: bool = False, is_learning: bool = True) -> UserSkill:
         """Create a user-skill relation for learning or teaching."""
         user_skill = UserSkill(
             user_id=user_id,

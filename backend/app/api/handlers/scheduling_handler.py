@@ -24,11 +24,7 @@ class SchedulingHandler:
     def __init__(self, scheduling_service: SchedulingService) -> None:
         self.scheduling_service = scheduling_service
 
-    def generateSchedulingSuggestion(
-        self,
-        user_id: int,
-        payload: SuggestionGenerationRequest,
-    ) -> SessionSuggestionResponse:
+    def generateSchedulingSuggestion(self, user_id: int, payload: SuggestionGenerationRequest) -> SessionSuggestionResponse:
         """Handle suggestion generation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
@@ -82,12 +78,7 @@ class SchedulingHandler:
             logger.exception("scheduling list suggestions handler failed")
             raise
 
-    def updateSchedulingSuggestionStatus(
-        self,
-        user_id: int,
-        suggestion_id: int,
-        payload: SuggestionStatusUpdateRequest,
-    ) -> SessionSuggestionResponse:
+    def updateSchedulingSuggestionStatus(self, user_id: int, suggestion_id: int, payload: SuggestionStatusUpdateRequest) -> SessionSuggestionResponse:
         """Handle suggestion status update requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
@@ -110,9 +101,7 @@ class SchedulingHandler:
             logger.exception("scheduling update suggestion status handler failed")
             raise
 
-    def _build_suggestion_response(
-        self, suggestion: object
-    ) -> SessionSuggestionResponse:
+    def _build_suggestion_response(self, suggestion: object) -> SessionSuggestionResponse:
         """Build a neutral participant-based response for scheduling suggestions."""
         participant_user_ids = getattr(suggestion, "participant_user_ids", None)
         if not participant_user_ids:

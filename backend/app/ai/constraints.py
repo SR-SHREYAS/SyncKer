@@ -11,11 +11,7 @@ def to_datetime_range(target_date: date, start_time: time, end_time: time) -> tu
     )
 
 
-def resolve_window(
-    window_start_at: datetime | None,
-    window_end_at: datetime | None,
-    minimum_duration_minutes: int,
-) -> tuple[datetime, datetime]:
+def resolve_window(window_start_at: datetime | None, window_end_at: datetime | None, minimum_duration_minutes: int) -> tuple[datetime, datetime]:
     """Pick a valid scheduling window for the rule engine."""
     start = window_start_at or datetime.utcnow()
     end = window_end_at or (start + timedelta(days=3))
@@ -26,21 +22,11 @@ def resolve_window(
     return start, end
 
 
-def overlaps(
-    left_start: datetime,
-    left_end: datetime,
-    right_start: datetime,
-    right_end: datetime,
-) -> bool:
+def overlaps(left_start: datetime, left_end: datetime, right_start: datetime, right_end: datetime) -> bool:
     """Return whether two datetime ranges overlap."""
     return left_start < right_end and right_start < left_end
 
 
-def is_slot_blocked(
-    *,
-    slot_start: datetime,
-    slot_end: datetime,
-    blocked_ranges: list[tuple[datetime, datetime]],
-) -> bool:
+def is_slot_blocked(*, slot_start: datetime, slot_end: datetime, blocked_ranges: list[tuple[datetime, datetime]]) -> bool:
     """Return whether a candidate slot conflicts with any blocked range."""
     return any(overlaps(slot_start, slot_end, blocked_start, blocked_end) for blocked_start, blocked_end in blocked_ranges)

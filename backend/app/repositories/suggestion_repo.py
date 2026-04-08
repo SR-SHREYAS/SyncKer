@@ -12,22 +12,7 @@ class SuggestionRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_suggestion(
-        self,
-        *,
-        team_id: int | None,
-        generated_for_user_id: int,
-        mentor_user_id: int,
-        learner_user_id: int,
-        participant_user_ids: list[int],
-        collaboration_title: str,
-        skill_id: int,
-        suggested_start_at: object,
-        suggested_end_at: object,
-        score: float,
-        status: str,
-        explanation: str,
-    ) -> SessionSuggestion:
+    def create_suggestion(self, *, team_id: int | None, generated_for_user_id: int, mentor_user_id: int, learner_user_id: int, participant_user_ids: list[int], collaboration_title: str, skill_id: int, suggested_start_at: object, suggested_end_at: object, score: float, status: str, explanation: str) -> SessionSuggestion:
         """Insert one generated session suggestion."""
         suggestion = SessionSuggestion(
             team_id=team_id,

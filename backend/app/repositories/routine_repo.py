@@ -12,17 +12,7 @@ class RoutineRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_block(
-        self,
-        *,
-        user_id: int,
-        title: str,
-        day_of_week: int | None,
-        start_time: object,
-        end_time: object,
-        is_recurring: bool,
-        specific_date: object,
-    ) -> RoutineBlock:
+    def create_block(self, *, user_id: int, title: str, day_of_week: int | None, start_time: object, end_time: object, is_recurring: bool, specific_date: object) -> RoutineBlock:
         """Insert one routine block for a user."""
         block = RoutineBlock(
             user_id=user_id,
