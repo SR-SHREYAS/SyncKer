@@ -34,6 +34,12 @@ class Task(TimestampMixin, Base):
     deadline_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    planned_start_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    planned_end_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     skill_id: Mapped[int | None] = mapped_column(ForeignKey("skills.id"), nullable=True)
 
     user = relationship("User", back_populates="tasks")
