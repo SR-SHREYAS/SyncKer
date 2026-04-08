@@ -18,7 +18,9 @@ class TeamService:
         self.team_repo = team_repo
         self.user_repo = user_repo
 
-    def CreateTeamWorkspace(self, *, current_user_id: int, name: str, description: str | None) -> Team:
+    def CreateTeamWorkspace(
+        self, *, current_user_id: int, name: str, description: str | None
+    ) -> Team:
         """Create a team and add creator as first member."""
         owner_user = self.user_repo.get_by_id(current_user_id)
         if owner_user is None:
@@ -35,7 +37,9 @@ class TeamService:
         logger.info("team create service completed")
         return created_team
 
-    def AddTeamParticipant(self, *, current_user_id: int, team_id: int, participant_user_id: int) -> TeamMember:
+    def AddTeamParticipant(
+        self, *, current_user_id: int, team_id: int, participant_user_id: int
+    ) -> TeamMember:
         """Add one user into a team when requested by the team owner."""
         team = self._get_team_or_raise(team_id)
 
@@ -67,7 +71,9 @@ class TeamService:
         logger.info("team list service completed")
         return teams
 
-    def ListTeamParticipants(self, *, current_user_id: int, team_id: int) -> list[TeamMember]:
+    def ListTeamParticipants(
+        self, *, current_user_id: int, team_id: int
+    ) -> list[TeamMember]:
         """Return members for one team if requester belongs to that team."""
         self._get_team_or_raise(team_id)
         self.AssertUserBelongsToTeam(team_id=team_id, user_id=current_user_id)
@@ -83,7 +89,9 @@ class TeamService:
             logger.error("team membership check failed")
             raise ForbiddenError("user is not a member of this team")
 
-    def AssertParticipantsBelongToTeam(self, *, team_id: int, participant_user_ids: list[int]) -> None:
+    def AssertParticipantsBelongToTeam(
+        self, *, team_id: int, participant_user_ids: list[int]
+    ) -> None:
         """Raise when any participant is not a member of the requested team."""
         self._get_team_or_raise(team_id)
         for participant_user_id in participant_user_ids:

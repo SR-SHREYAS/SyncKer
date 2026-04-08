@@ -47,7 +47,11 @@ def list_current_user_teams(
     return handler.listCurrentUserTeams(current_user_id)
 
 
-@router.post("/{team_id}/members", response_model=TeamMemberResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{team_id}/members",
+    response_model=TeamMemberResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def add_team_participant(
     team_id: int,
     payload: TeamAddParticipantRequest,

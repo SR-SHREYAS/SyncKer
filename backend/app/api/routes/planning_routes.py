@@ -10,6 +10,8 @@ from app.api.handlers.planning_handler import PlanningHandler
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.task_repo import TaskRepository
+from app.repositories.team_repo import TeamRepository
+from app.repositories.user_repo import UserRepository
 from app.schemas.availability import (
     AvailabilityBlockCreateRequest,
     AvailabilityBlockResponse,
@@ -20,8 +22,14 @@ from app.schemas.routine import (
     RoutineBlockResponse,
     RoutineBlockUpdateRequest,
 )
-from app.schemas.task import TaskCreateRequest, TaskResponse, TaskUpdateRequest
+from app.schemas.task import (
+    TaskCreateRequest,
+    TaskResponse,
+    TaskUpdateRequest,
+    TeamTimetableResponse,
+)
 from app.services.planning_service import PlanningService
+from app.services.team_service import TeamService
 
 router = APIRouter(prefix="/planning", tags=["planning"])
 
@@ -31,7 +39,15 @@ def get_planning_handler(db: Annotated[Session, Depends(get_db)]) -> PlanningHan
     task_repo = TaskRepository(db)
     availability_repo = AvailabilityRepository(db)
     routine_repo = RoutineRepository(db)
-    planning_service = PlanningService(task_repo, availability_repo, routine_repo)
+    team_repo = TeamRepository(db)
+    user_repo = UserRepository(db)
+    team_service = TeamService(team_repo, user_repo)
+    planning_service = PlanningService(
+        task_repo,
+        availability_repo,
+        routine_repo,
+        team_service,
+    )
     return PlanningHandler(planning_service)
 
 
@@ -52,6 +68,16 @@ def list_tasks(
 ) -> list[TaskResponse]:
     """Return tasks owned by the authenticated user."""
     return handler.listPlanningTasks(current_user_id)
+
+
+@router.get("/teams/{team_id}/timetable", response_model=TeamTimetableResponse)
+def list_team_timetable(
+    team_id: int,
+    current_user_id: CurrentUserId,
+    handler: Annotated[PlanningHandler, Depends(get_planning_handler)],
+) -> TeamTimetableResponse:
+    """Return team timetable grouped by participant."""
+    return handler.listTeamTimetable(current_user_id, team_id)
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskResponse)
@@ -121,7 +147,9 @@ def delete_availability_block(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
-@router.post("/routine", response_model=RoutineBlockResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/routine", response_model=RoutineBlockResponse, status_code=status.HTTP_201_CREATED
+)
 def create_routine_block(
     payload: RoutineBlockCreateRequest,
     current_user_id: CurrentUserId,

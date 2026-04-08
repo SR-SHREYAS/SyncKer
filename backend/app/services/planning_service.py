@@ -1,5 +1,7 @@
 """Planning business logic."""
 
+from dataclasses import dataclass
+
 from app.core.exceptions import NotFoundError
 from app.models.availability_block import AvailabilityBlock
 from app.models.routine_block import RoutineBlock
@@ -7,9 +9,20 @@ from app.models.task import Task
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.task_repo import TaskRepository
+from app.services.team_service import TeamService
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+@dataclass(slots=True)
+class TeamTimetableParticipantResult:
+    """User row for team timetable view."""
+
+    user_id: int
+    username: str
+    email: str
+    tasks: list[Task]
 
 
 class PlanningService:
@@ -20,10 +33,12 @@ class PlanningService:
         task_repo: TaskRepository,
         availability_repo: AvailabilityRepository,
         routine_repo: RoutineRepository,
+        team_service: TeamService,
     ) -> None:
         self.task_repo = task_repo
         self.availability_repo = availability_repo
         self.routine_repo = routine_repo
+        self.team_service = team_service
 
     def CreatePlanningTask(
         self,
@@ -35,7 +50,7 @@ class PlanningService:
         status: str,
         estimated_minutes: int,
         deadline_at: object,
-        skill_id: int | None,
+        skill_id: int | None
     ) -> Task:
         """Create one task owned by the current user."""
         task = self.task_repo.create_task(
@@ -83,6 +98,40 @@ class PlanningService:
         self.task_repo.delete_task(task)
         logger.info("task delete service completed")
 
+    def ListTeamTimetable(
+        self, *, current_user_id: int, team_id: int
+    ) -> list[TeamTimetableParticipantResult]:
+        """Return team timetable rows grouped by participant."""
+        team_members = self.team_service.ListTeamParticipants(
+            current_user_id=current_user_id, team_id=team_id
+        )
+        member_user_pairs: list[tuple[object, object]] = []
+        for team_member in team_members:
+            resolved_user = getattr(team_member, "user", None)
+            if resolved_user is None:
+                logger.error("team timetable blocked: team member user details missing")
+                raise NotFoundError("team member user not found")
+            member_user_pairs.append((team_member, resolved_user))
+
+        member_user_ids = [team_member.user_id for team_member, _ in member_user_pairs]
+        all_member_tasks = self.task_repo.list_tasks_by_users(user_ids=member_user_ids)
+        tasks_by_user_id: dict[int, list[Task]] = {}
+        for task in all_member_tasks:
+            tasks_by_user_id.setdefault(task.user_id, []).append(task)
+
+        participant_rows = [
+            TeamTimetableParticipantResult(
+                user_id=team_member.user_id,
+                username=resolved_user.username,
+                email=resolved_user.email,
+                tasks=tasks_by_user_id.get(team_member.user_id, []),
+            )
+            for team_member, resolved_user in member_user_pairs
+        ]
+
+        logger.info("team timetable list service completed")
+        return participant_rows
+
     def CreateAvailabilityBlock(
         self,
         *,
@@ -91,7 +140,7 @@ class PlanningService:
         start_time: object,
         end_time: object,
         is_recurring: bool,
-        specific_date: object,
+        specific_date: object
     ) -> AvailabilityBlock:
         """Create one availability block owned by the current user."""
         block = self.availability_repo.create_block(
@@ -111,7 +160,9 @@ class PlanningService:
         logger.info("availability list service completed")
         return blocks
 
-    def UpdateAvailabilityBlock(self, user_id: int, block_id: int, **updates: object) -> AvailabilityBlock:
+    def UpdateAvailabilityBlock(
+        self, user_id: int, block_id: int, **updates: object
+    ) -> AvailabilityBlock:
         """Update one owned availability block."""
         block = self.availability_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:
@@ -146,7 +197,7 @@ class PlanningService:
         start_time: object,
         end_time: object,
         is_recurring: bool,
-        specific_date: object,
+        specific_date: object
     ) -> RoutineBlock:
         """Create one routine block owned by the current user."""
         block = self.routine_repo.create_block(
@@ -167,7 +218,9 @@ class PlanningService:
         logger.info("routine list service completed")
         return blocks
 
-    def UpdateRoutineBlock(self, user_id: int, block_id: int, **updates: object) -> RoutineBlock:
+    def UpdateRoutineBlock(
+        self, user_id: int, block_id: int, **updates: object
+    ) -> RoutineBlock:
         """Update one owned routine block."""
         block = self.routine_repo.get_block_by_id(block_id)
         if block is None or block.user_id != user_id:

@@ -26,7 +26,9 @@ from app.services.team_service import TeamService
 router = APIRouter(prefix="/scheduling", tags=["scheduling"])
 
 
-def get_scheduling_handler(db: Annotated[Session, Depends(get_db)]) -> SchedulingHandler:
+def get_scheduling_handler(
+    db: Annotated[Session, Depends(get_db)],
+) -> SchedulingHandler:
     """Build the scheduling dependency chain for route handlers."""
     suggestion_repo = SuggestionRepository(db)
     task_repo = TaskRepository(db)

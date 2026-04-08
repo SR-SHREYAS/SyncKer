@@ -67,7 +67,9 @@ def normalize_optional_text_to_none(value: object) -> object:
     return normalized_value
 
 
-def ensure_payload_has_updates(payload: BaseModel, *, field_names: tuple[str, ...]) -> None:
+def ensure_payload_has_updates(
+    payload: BaseModel, *, field_names: tuple[str, ...]
+) -> None:
     """Ensure update requests include at least one field to modify."""
     if not any(getattr(payload, field_name) is not None for field_name in field_names):
         raise BadRequestError(
@@ -81,7 +83,9 @@ def ensure_optional_id_is_positive(value: int | None, *, field_name: str) -> Non
         raise BadRequestError(f"{field_name} must be a positive integer")
 
 
-def ensure_time_range(*, start_time: time | None, end_time: time | None, context: str) -> None:
+def ensure_time_range(
+    *, start_time: time | None, end_time: time | None, context: str
+) -> None:
     """Ensure time range updates do not invert start and end times."""
     if start_time is not None and end_time is not None and start_time >= end_time:
         raise BadRequestError(
@@ -95,7 +99,9 @@ def ensure_distinct_ids(left_value: int, right_value: int, *, context: str) -> N
         raise BadRequestError(f"invalid {context}: both ids cannot be the same")
 
 
-def ensure_participant_ids_list(participant_user_ids: list[int], *, context: str) -> None:
+def ensure_participant_ids_list(
+    participant_user_ids: list[int], *, context: str
+) -> None:
     """Ensure participant list is usable for scheduling logic."""
     if len(participant_user_ids) < 2:
         raise BadRequestError(
@@ -122,7 +128,9 @@ def ensure_id_in_list(
         )
 
 
-def ensure_model_fields_present(payload: BaseModel, *, fields: tuple[str, ...], context: str) -> None:
+def ensure_model_fields_present(
+    payload: BaseModel, *, fields: tuple[str, ...], context: str
+) -> None:
     """Ensure a create payload has required meaningful values after parsing."""
     for field_name in fields:
         value: Any = getattr(payload, field_name)

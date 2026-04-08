@@ -30,5 +30,7 @@ class UserUpdateRequest(BaseModel):
 
     @field_validator("username", mode="before")
     @classmethod
-    def normalize_optional_username_not_blank(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_optional_username_not_blank(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_optional_text(value, field_name=info.field_name)

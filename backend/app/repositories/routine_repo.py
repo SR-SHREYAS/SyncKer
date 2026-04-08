@@ -21,7 +21,7 @@ class RoutineRepository:
         start_time: object,
         end_time: object,
         is_recurring: bool,
-        specific_date: object,
+        specific_date: object
     ) -> RoutineBlock:
         """Insert one routine block for a user."""
         block = RoutineBlock(

@@ -55,9 +55,7 @@ def get_profile(
 
 
 @router.post(
-    "/me/profile",
-    response_model=ProfileResponse,
-    status_code=status.HTTP_201_CREATED,
+    "/me/profile", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED
 )
 def create_profile(
     payload: ProfileCreateRequest,

@@ -22,13 +22,10 @@ def get_auth_handler(db: Annotated[Session, Depends(get_db)]) -> AuthHandler:
 
 
 @router.post(
-    "/register",
-    response_model=AuthResponse,
-    status_code=status.HTTP_201_CREATED,
+    "/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED
 )
 def register(
-    payload: RegisterRequest,
-    handler: Annotated[AuthHandler, Depends(get_auth_handler)],
+    payload: RegisterRequest, handler: Annotated[AuthHandler, Depends(get_auth_handler)]
 ) -> AuthResponse:
     """Register a new user account."""
     return handler.registerUser(payload)
@@ -36,8 +33,7 @@ def register(
 
 @router.post("/login", response_model=AuthResponse)
 def login(
-    payload: LoginRequest,
-    handler: Annotated[AuthHandler, Depends(get_auth_handler)],
+    payload: LoginRequest, handler: Annotated[AuthHandler, Depends(get_auth_handler)]
 ) -> AuthResponse:
     """Authenticate a user and return an access token."""
     return handler.loginUser(payload)

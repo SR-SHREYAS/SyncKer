@@ -19,7 +19,9 @@ class SuggestionGenerationRequest(BaseModel):
 
     @field_validator("collaboration_title", mode="before")
     @classmethod
-    def normalize_collaboration_title_not_blank(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_collaboration_title_not_blank(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_required_text(value, field_name=info.field_name)
 
 

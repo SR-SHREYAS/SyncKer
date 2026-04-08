@@ -13,7 +13,9 @@ class SkillRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_skill(self, *, name: str, slug: str, description: str | None = None) -> Skill:
+    def create_skill(
+        self, *, name: str, slug: str, description: str | None = None
+    ) -> Skill:
         """Insert a new skill in the shared catalog."""
         skill = Skill(name=name, slug=slug, description=description)
         self.db.add(skill)
@@ -43,7 +45,7 @@ class SkillRepository:
         skill_id: int,
         proficiency_level: str,
         is_teaching: bool = False,
-        is_learning: bool = True,
+        is_learning: bool = True
     ) -> UserSkill:
         """Create a user-skill relation for learning or teaching."""
         user_skill = UserSkill(

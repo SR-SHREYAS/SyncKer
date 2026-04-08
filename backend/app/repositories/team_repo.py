@@ -13,7 +13,9 @@ class TeamRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_team(self, *, name: str, description: str | None, owner_user_id: int) -> Team:
+    def create_team(
+        self, *, name: str, description: str | None, owner_user_id: int
+    ) -> Team:
         """Insert one team workspace."""
         team = Team(name=name, description=description, owner_user_id=owner_user_id)
         self.db.add(team)

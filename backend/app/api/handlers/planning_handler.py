@@ -11,7 +11,13 @@ from app.schemas.routine import (
     RoutineBlockResponse,
     RoutineBlockUpdateRequest,
 )
-from app.schemas.task import TaskCreateRequest, TaskResponse, TaskUpdateRequest
+from app.schemas.task import (
+    TaskCreateRequest,
+    TaskResponse,
+    TaskUpdateRequest,
+    TeamTimetableParticipantResponse,
+    TeamTimetableResponse,
+)
 from app.services.planning_service import PlanningService
 from app.utils.logger import get_logger
 from app.utils.request_validation import (
@@ -30,7 +36,9 @@ class PlanningHandler:
     def __init__(self, planning_service: PlanningService) -> None:
         self.planning_service = planning_service
 
-    def createPlanningTask(self, user_id: int, payload: TaskCreateRequest) -> TaskResponse:
+    def createPlanningTask(
+        self, user_id: int, payload: TaskCreateRequest
+    ) -> TaskResponse:
         """Handle task creation requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
@@ -65,7 +73,9 @@ class PlanningHandler:
             logger.exception("task list handler failed")
             raise
 
-    def updatePlanningTask(self, user_id: int, task_id: int, payload: TaskUpdateRequest) -> TaskResponse:
+    def updatePlanningTask(
+        self, user_id: int, task_id: int, payload: TaskUpdateRequest
+    ) -> TaskResponse:
         """Handle task update requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
@@ -113,10 +123,44 @@ class PlanningHandler:
             logger.exception("task delete handler failed")
             raise
 
+    def listTeamTimetable(
+        self, current_user_id: int, team_id: int
+    ) -> TeamTimetableResponse:
+        """Handle team timetable read requests."""
+        try:
+            # Validate request input.
+            ensure_positive_id(current_user_id, field_name="current_user_id")
+            ensure_positive_id(team_id, field_name="team_id")
+
+            # Call service layer.
+            participant_rows = self.planning_service.ListTeamTimetable(
+                current_user_id=current_user_id, team_id=team_id
+            )
+
+            # Build response model.
+            participants = [
+                TeamTimetableParticipantResponse(
+                    user_id=participant_row.user_id,
+                    username=participant_row.username,
+                    email=participant_row.email,
+                    tasks=[
+                        TaskResponse.model_validate(task)
+                        for task in participant_row.tasks
+                    ],
+                )
+                for participant_row in participant_rows
+            ]
+            team_timetable_response = TeamTimetableResponse(
+                team_id=team_id, participants=participants
+            )
+            logger.info("team timetable list handler completed")
+            return team_timetable_response
+        except AppError:
+            logger.exception("team timetable list handler failed")
+            raise
+
     def createAvailabilityBlock(
-        self,
-        user_id: int,
-        payload: AvailabilityBlockCreateRequest,
+        self, user_id: int, payload: AvailabilityBlockCreateRequest
     ) -> AvailabilityBlockResponse:
         """Handle availability block creation requests."""
         try:
@@ -152,10 +196,7 @@ class PlanningHandler:
             raise
 
     def updateAvailabilityBlock(
-        self,
-        user_id: int,
-        block_id: int,
-        payload: AvailabilityBlockUpdateRequest,
+        self, user_id: int, block_id: int, payload: AvailabilityBlockUpdateRequest
     ) -> AvailabilityBlockResponse:
         """Handle availability block update requests."""
         try:
@@ -205,9 +246,7 @@ class PlanningHandler:
             raise
 
     def createRoutineBlock(
-        self,
-        user_id: int,
-        payload: RoutineBlockCreateRequest,
+        self, user_id: int, payload: RoutineBlockCreateRequest
     ) -> RoutineBlockResponse:
         """Handle routine block creation requests."""
         try:
@@ -241,10 +280,7 @@ class PlanningHandler:
             raise
 
     def updateRoutineBlock(
-        self,
-        user_id: int,
-        block_id: int,
-        payload: RoutineBlockUpdateRequest,
+        self, user_id: int, block_id: int, payload: RoutineBlockUpdateRequest
     ) -> RoutineBlockResponse:
         """Handle routine block update requests."""
         try:

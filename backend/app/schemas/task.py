@@ -2,7 +2,14 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    ValidationInfo,
+    field_validator,
+)
 
 from app.models.enums import TaskPriority, TaskStatus
 from app.utils.request_validation import (
@@ -41,7 +48,9 @@ class TaskUpdateRequest(BaseModel):
 
     @field_validator("title", mode="before")
     @classmethod
-    def normalize_optional_title_not_blank(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_optional_title_not_blank(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_optional_text(value, field_name=info.field_name)
 
 
@@ -52,3 +61,15 @@ class TaskResponse(TaskBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TeamTimetableParticipantResponse(BaseModel):
+    user_id: int
+    username: str
+    email: EmailStr
+    tasks: list[TaskResponse]
+
+
+class TeamTimetableResponse(BaseModel):
+    team_id: int
+    participants: list[TeamTimetableParticipantResponse]

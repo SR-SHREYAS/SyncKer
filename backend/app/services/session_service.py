@@ -19,14 +19,14 @@ class SessionService:
     """Business rules for booked sessions."""
 
     def __init__(
-        self,
-        session_repo: SessionRepository,
-        suggestion_repo: SuggestionRepository,
+        self, session_repo: SessionRepository, suggestion_repo: SuggestionRepository
     ) -> None:
         self.session_repo = session_repo
         self.suggestion_repo = suggestion_repo
 
-    def CreateSessionFromSuggestion(self, user_id: int, *, suggestion_id: int, title: str | None) -> Session:
+    def CreateSessionFromSuggestion(
+        self, user_id: int, *, suggestion_id: int, title: str | None
+    ) -> Session:
         """Create a booked session from one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
         if suggestion is None or suggestion.generated_for_user_id != user_id:

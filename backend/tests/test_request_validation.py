@@ -59,11 +59,15 @@ def test_normalize_optional_text_to_none_with_none_returns_none() -> None:
     assert normalize_optional_text_to_none(None) is None
 
 
-def test_normalize_optional_text_to_none_with_non_blank_string_returns_unchanged() -> None:
+def test_normalize_optional_text_to_none_with_non_blank_string_returns_unchanged() -> (
+    None
+):
     assert normalize_optional_text_to_none("Some description") == "Some description"
 
 
-def test_normalize_optional_text_to_none_with_empty_or_whitespace_returns_none() -> None:
+def test_normalize_optional_text_to_none_with_empty_or_whitespace_returns_none() -> (
+    None
+):
     assert normalize_optional_text_to_none("") is None
     assert normalize_optional_text_to_none("   ") is None
 

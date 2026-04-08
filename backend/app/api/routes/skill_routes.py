@@ -43,7 +43,9 @@ def list_skills(
     return handler.listSkillCatalog()
 
 
-@router.post("/me", response_model=UserSkillResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/me", response_model=UserSkillResponse, status_code=status.HTTP_201_CREATED
+)
 def attach_skill_to_me(
     payload: UserSkillCreateRequest,
     current_user_id: CurrentUserId,

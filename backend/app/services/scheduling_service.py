@@ -47,7 +47,7 @@ class SchedulingService:
         skill_id: int | None,
         window_start_at: object,
         window_end_at: object,
-        minimum_duration_minutes: int,
+        minimum_duration_minutes: int
     ) -> SessionSuggestion:
         """Generate and save one planning-aware session suggestion."""
         self._ensure_participants_are_in_team(
@@ -103,7 +103,7 @@ class SchedulingService:
         *,
         team_id: int,
         generated_for_user_id: int,
-        participant_user_ids: list[int],
+        participant_user_ids: list[int]
     ) -> None:
         """Ensure scheduling request uses one real team and valid members."""
         self.team_service.AssertUserBelongsToTeam(
@@ -121,11 +121,7 @@ class SchedulingService:
         return suggestions
 
     def UpdateSchedulingSuggestionStatus(
-        self,
-        user_id: int,
-        suggestion_id: int,
-        *,
-        status: SuggestionStatus,
+        self, user_id: int, suggestion_id: int, *, status: SuggestionStatus
     ) -> SessionSuggestion:
         """Update the status of one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)

@@ -15,7 +15,9 @@ class SkillService:
     def __init__(self, skill_repo: SkillRepository) -> None:
         self.skill_repo = skill_repo
 
-    def CreateSkillCatalogEntry(self, *, name: str, slug: str, description: str | None = None) -> Skill:
+    def CreateSkillCatalogEntry(
+        self, *, name: str, slug: str, description: str | None = None
+    ) -> Skill:
         """Create a new skill if its slug is still available."""
         existing_skill = self.skill_repo.get_skill_by_slug(slug)
         if existing_skill is not None:
@@ -41,7 +43,7 @@ class SkillService:
         skill_id: int,
         proficiency_level: str,
         is_teaching: bool = False,
-        is_learning: bool = True,
+        is_learning: bool = True
     ) -> UserSkill:
         """Link one skill to one user for learning or teaching."""
         skill = self.skill_repo.get_skill_by_id(skill_id)

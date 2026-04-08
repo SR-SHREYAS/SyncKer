@@ -20,7 +20,7 @@ class AvailabilityRepository:
         start_time: object,
         end_time: object,
         is_recurring: bool,
-        specific_date: object,
+        specific_date: object
     ) -> AvailabilityBlock:
         """Insert one availability block for a user."""
         block = AvailabilityBlock(
@@ -50,7 +50,9 @@ class AvailabilityRepository:
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def update_block(self, block: AvailabilityBlock, **updates: object) -> AvailabilityBlock:
+    def update_block(
+        self, block: AvailabilityBlock, **updates: object
+    ) -> AvailabilityBlock:
         """Apply field updates to an existing availability block."""
         for field, value in updates.items():
             setattr(block, field, value)

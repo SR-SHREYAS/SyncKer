@@ -18,7 +18,7 @@ class SchedulerEngine:
         window_end_at,
         tasks: list[object],
         availability_blocks: list[object],
-        routine_blocks: list[object],
+        routine_blocks: list[object]
     ) -> dict[str, object]:
         """Generate one session suggestion with planning-aware rules."""
         resolved_start, resolved_end = resolve_window(

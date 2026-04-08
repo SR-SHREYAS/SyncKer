@@ -19,7 +19,9 @@ class ProfileBase(BaseModel):
 
     @field_validator("full_name", "timezone", mode="before")
     @classmethod
-    def normalize_required_text_fields(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_required_text_fields(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_required_text(value, field_name=info.field_name)
 
 
@@ -35,7 +37,9 @@ class ProfileUpdateRequest(BaseModel):
 
     @field_validator("full_name", "timezone", mode="before")
     @classmethod
-    def normalize_optional_text_fields(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_optional_text_fields(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_optional_text(value, field_name=info.field_name)
 
 

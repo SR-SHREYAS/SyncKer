@@ -8,7 +8,6 @@ Create Date: 2026-04-04 00:30:00
 from alembic import op
 import sqlalchemy as sa
 
-
 revision = "20260404_0003"
 down_revision = "20260404_0002"
 branch_labels = None
@@ -20,12 +19,10 @@ def upgrade() -> None:
         "session_suggestions",
         sa.Column("collaboration_title", sa.String(length=180), nullable=True),
     )
-    op.execute(
-        """
+    op.execute("""
         UPDATE session_suggestions
         SET collaboration_title = 'Collaboration Session'
-        """
-    )
+        """)
     op.alter_column("session_suggestions", "collaboration_title", nullable=False)
 
 

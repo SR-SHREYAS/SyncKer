@@ -25,9 +25,7 @@ class SchedulingHandler:
         self.scheduling_service = scheduling_service
 
     def generateSchedulingSuggestion(
-        self,
-        user_id: int,
-        payload: SuggestionGenerationRequest,
+        self, user_id: int, payload: SuggestionGenerationRequest
     ) -> SessionSuggestionResponse:
         """Handle suggestion generation requests."""
         try:
@@ -66,7 +64,9 @@ class SchedulingHandler:
             logger.exception("scheduling generate suggestion handler failed")
             raise
 
-    def listSchedulingSuggestions(self, user_id: int) -> list[SessionSuggestionResponse]:
+    def listSchedulingSuggestions(
+        self, user_id: int
+    ) -> list[SessionSuggestionResponse]:
         """Handle suggestion list requests."""
         try:
             ensure_positive_id(user_id, field_name="user_id")
@@ -83,10 +83,7 @@ class SchedulingHandler:
             raise
 
     def updateSchedulingSuggestionStatus(
-        self,
-        user_id: int,
-        suggestion_id: int,
-        payload: SuggestionStatusUpdateRequest,
+        self, user_id: int, suggestion_id: int, payload: SuggestionStatusUpdateRequest
     ) -> SessionSuggestionResponse:
         """Handle suggestion status update requests."""
         try:

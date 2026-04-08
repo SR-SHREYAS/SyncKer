@@ -26,7 +26,7 @@ class SuggestionRepository:
         suggested_end_at: object,
         score: float,
         status: str,
-        explanation: str,
+        explanation: str
     ) -> SessionSuggestion:
         """Insert one generated session suggestion."""
         suggestion = SessionSuggestion(
@@ -62,7 +62,9 @@ class SuggestionRepository:
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def update_suggestion(self, suggestion: SessionSuggestion, **updates: object) -> SessionSuggestion:
+    def update_suggestion(
+        self, suggestion: SessionSuggestion, **updates: object
+    ) -> SessionSuggestion:
         """Apply field updates to an existing suggestion."""
         for field, value in updates.items():
             setattr(suggestion, field, value)

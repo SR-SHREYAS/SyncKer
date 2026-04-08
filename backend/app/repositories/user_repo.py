@@ -33,12 +33,7 @@ class UserRepository:
         return self.db.execute(stmt).scalar_one_or_none()
 
     def create_user(
-        self,
-        *,
-        email: str,
-        username: str,
-        password_hash: str,
-        is_active: bool = True,
+        self, *, email: str, username: str, password_hash: str, is_active: bool = True
     ) -> User:
         """Insert a new user row and return the saved record."""
         user = User(
@@ -63,13 +58,7 @@ class UserRepository:
         return user
 
     def create_profile(
-        self,
-        *,
-        user_id: int,
-        full_name: str,
-        bio: str | None,
-        role: str,
-        timezone: str,
+        self, *, user_id: int, full_name: str, bio: str | None, role: str, timezone: str
     ) -> Profile:
         """Create the one-to-one profile attached to a user."""
         profile = Profile(

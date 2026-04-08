@@ -22,7 +22,7 @@ class SessionRepository:
         scheduled_start_at: object,
         scheduled_end_at: object,
         status: str,
-        created_by_user_id: int,
+        created_by_user_id: int
     ) -> SessionModel:
         """Insert one scheduled session."""
         session = SessionModel(
@@ -83,7 +83,7 @@ class SessionRepository:
         user_id: int,
         participant_role: str,
         response_status: str,
-        joined_at: object = None,
+        joined_at: object = None
     ) -> SessionParticipant:
         """Insert one participant for a session."""
         participant = SessionParticipant(
@@ -107,7 +107,9 @@ class SessionRepository:
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def update_participant(self, participant: SessionParticipant, **updates: object) -> SessionParticipant:
+    def update_participant(
+        self, participant: SessionParticipant, **updates: object
+    ) -> SessionParticipant:
         """Apply field updates to an existing session participant."""
         for field, value in updates.items():
             setattr(participant, field, value)

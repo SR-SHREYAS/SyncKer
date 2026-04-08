@@ -20,7 +20,9 @@ class TeamHandler:
     def __init__(self, team_service: TeamService) -> None:
         self.team_service = team_service
 
-    def createTeamWorkspace(self, current_user_id: int, payload: TeamCreateRequest) -> TeamResponse:
+    def createTeamWorkspace(
+        self, current_user_id: int, payload: TeamCreateRequest
+    ) -> TeamResponse:
         """Handle team workspace creation requests."""
         try:
             ensure_positive_id(current_user_id, field_name="current_user_id")
@@ -49,10 +51,7 @@ class TeamHandler:
             raise
 
     def addTeamParticipant(
-        self,
-        current_user_id: int,
-        team_id: int,
-        payload: TeamAddParticipantRequest,
+        self, current_user_id: int, team_id: int, payload: TeamAddParticipantRequest
     ) -> TeamMemberResponse:
         """Handle team participant addition requests."""
         try:
@@ -73,7 +72,9 @@ class TeamHandler:
             logger.exception("team add participant handler failed")
             raise
 
-    def listTeamParticipants(self, current_user_id: int, team_id: int) -> list[TeamMemberResponse]:
+    def listTeamParticipants(
+        self, current_user_id: int, team_id: int
+    ) -> list[TeamMemberResponse]:
         """Handle list-team-participants requests."""
         try:
             ensure_positive_id(current_user_id, field_name="current_user_id")

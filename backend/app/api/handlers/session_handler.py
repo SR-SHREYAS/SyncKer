@@ -23,9 +23,7 @@ class SessionHandler:
         self.session_service = session_service
 
     def createSessionFromSuggestion(
-        self,
-        user_id: int,
-        payload: SessionCreateFromSuggestionRequest,
+        self, user_id: int, payload: SessionCreateFromSuggestionRequest
     ) -> SessionDetailResponse:
         """Handle session creation from a suggestion."""
         try:
@@ -96,10 +94,7 @@ class SessionHandler:
         )
 
     def _build_participant_response(
-        self,
-        participant: object,
-        *,
-        participant_index: int,
+        self, participant: object, *, participant_index: int
     ) -> SessionParticipantResponse:
         """Build one participant response with a neutral collaboration role label."""
         participant_role = getattr(participant, "participant_role")
