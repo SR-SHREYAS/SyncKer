@@ -19,6 +19,20 @@ from app.utils.request_validation import (
 )
 
 
+def _validate_planned_time_range(
+    *,
+    planned_start_at: datetime | None,
+    planned_end_at: datetime | None,
+) -> None:
+    """Keep planned time range constraint in one shared place."""
+    if (
+        planned_start_at is not None
+        and planned_end_at is not None
+        and planned_end_at <= planned_start_at
+    ):
+        raise ValueError("planned_end_at must be after planned_start_at")
+
+
 class TaskBase(BaseModel):
     title: str = Field(min_length=2, max_length=160)
     description: str | None = Field(default=None, max_length=2000)
@@ -37,12 +51,10 @@ class TaskBase(BaseModel):
 
     @model_validator(mode="after")
     def validate_planned_task_time_range(self) -> "TaskBase":
-        if (
-            self.planned_start_at is not None
-            and self.planned_end_at is not None
-            and self.planned_end_at <= self.planned_start_at
-        ):
-            raise ValueError("planned_end_at must be after planned_start_at")
+        _validate_planned_time_range(
+            planned_start_at=self.planned_start_at,
+            planned_end_at=self.planned_end_at,
+        )
         return self
 
 
@@ -70,12 +82,10 @@ class TaskUpdateRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_planned_task_time_range(self) -> "TaskUpdateRequest":
-        if (
-            self.planned_start_at is not None
-            and self.planned_end_at is not None
-            and self.planned_end_at <= self.planned_start_at
-        ):
-            raise ValueError("planned_end_at must be after planned_start_at")
+        _validate_planned_time_range(
+            planned_start_at=self.planned_start_at,
+            planned_end_at=self.planned_end_at,
+        )
         return self
 
 

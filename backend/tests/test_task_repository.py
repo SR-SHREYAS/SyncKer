@@ -24,6 +24,14 @@ from app.models.enums import TaskPriority, TaskStatus
 from app.repositories.task_repo import TaskRepository
 
 
+def _as_utc_naive(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
+
+
 @pytest.fixture
 def db_session() -> Session:
     engine = create_engine(
@@ -191,3 +199,35 @@ def test_list_tasks_by_users_has_no_duplicates_or_omissions(
     subset_tasks = repository.list_tasks_by_users(user_ids=[1, 3])
     assert {task.user_id for task in subset_tasks} == {1, 3}
     assert all(task.user_id in {1, 3} for task in subset_tasks)
+
+
+def test_create_task_persists_planned_timeslot_values(db_session: Session) -> None:
+    repository = TaskRepository(db_session)
+    _seed_user(db_session, user_id=10, email="owner@example.com", username="owner")
+
+    current_time = datetime.now(UTC).replace(microsecond=0)
+    planned_start_at = current_time + timedelta(minutes=15)
+    planned_end_at = current_time + timedelta(minutes=75)
+
+    created_task = repository.create_task(
+        user_id=10,
+        title="Task with planned times",
+        description="Task description",
+        priority=TaskPriority.MEDIUM,
+        status=TaskStatus.PENDING,
+        estimated_minutes=30,
+        deadline_at=None,
+        planned_start_at=planned_start_at,
+        planned_end_at=planned_end_at,
+        skill_id=None,
+    )
+
+    fetched_task = repository.get_task_by_id(created_task.id)
+
+    assert fetched_task is not None
+    assert _as_utc_naive(fetched_task.planned_start_at) == _as_utc_naive(
+        planned_start_at
+    )
+    assert _as_utc_naive(fetched_task.planned_end_at) == _as_utc_naive(
+        planned_end_at
+    )
