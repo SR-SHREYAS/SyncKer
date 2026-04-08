@@ -52,6 +52,8 @@ class PlanningHandler:
                 status=payload.status,
                 estimated_minutes=payload.estimated_minutes,
                 deadline_at=payload.deadline_at,
+                planned_start_at=payload.planned_start_at,
+                planned_end_at=payload.planned_end_at,
                 skill_id=payload.skill_id,
             )
             task_response = TaskResponse.model_validate(created_task)
@@ -89,6 +91,8 @@ class PlanningHandler:
                     "status",
                     "estimated_minutes",
                     "deadline_at",
+                    "planned_start_at",
+                    "planned_end_at",
                     "skill_id",
                 ),
             )
@@ -103,6 +107,8 @@ class PlanningHandler:
                 status=payload.status,
                 estimated_minutes=payload.estimated_minutes,
                 deadline_at=payload.deadline_at,
+                planned_start_at=payload.planned_start_at,
+                planned_end_at=payload.planned_end_at,
                 skill_id=payload.skill_id,
             )
             task_response = TaskResponse.model_validate(updated_task)

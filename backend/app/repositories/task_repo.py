@@ -1,5 +1,7 @@
 """Task persistence queries."""
 
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,7 +23,9 @@ class TaskRepository:
         priority: str,
         status: str,
         estimated_minutes: int,
-        deadline_at: object,
+        deadline_at: datetime | None,
+        planned_start_at: datetime | None,
+        planned_end_at: datetime | None,
         skill_id: int | None
     ) -> Task:
         """Insert one task for a user."""
@@ -33,6 +37,8 @@ class TaskRepository:
             status=status,
             estimated_minutes=estimated_minutes,
             deadline_at=deadline_at,
+            planned_start_at=planned_start_at,
+            planned_end_at=planned_end_at,
             skill_id=skill_id,
         )
         self.db.add(task)

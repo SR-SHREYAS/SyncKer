@@ -73,6 +73,8 @@ def _seed_task(
         status=TaskStatus.PENDING,
         estimated_minutes=30,
         deadline_at=None,
+        planned_start_at=None,
+        planned_end_at=None,
         skill_id=None,
         created_at=created_at,
         updated_at=created_at,

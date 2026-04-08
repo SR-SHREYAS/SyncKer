@@ -106,6 +106,8 @@ def _build_task(*, task_id: int, user_id: int, title: str) -> SimpleNamespace:
         status=TaskStatus.PENDING,
         estimated_minutes=30,
         deadline_at=None,
+        planned_start_at=None,
+        planned_end_at=None,
         skill_id=None,
         created_at=current_time,
         updated_at=current_time,
