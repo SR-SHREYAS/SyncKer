@@ -32,7 +32,9 @@ class UserRepository:
         stmt = select(User).where(User.username == username)
         return self.db.execute(stmt).scalar_one_or_none()
 
-    def create_user(self, *, email: str, username: str, password_hash: str, is_active: bool = True) -> User:
+    def create_user(
+        self, *, email: str, username: str, password_hash: str, is_active: bool = True
+    ) -> User:
         """Insert a new user row and return the saved record."""
         user = User(
             email=email,
@@ -55,7 +57,9 @@ class UserRepository:
         self.db.refresh(user)
         return user
 
-    def create_profile(self, *, user_id: int, full_name: str, bio: str | None, role: str, timezone: str) -> Profile:
+    def create_profile(
+        self, *, user_id: int, full_name: str, bio: str | None, role: str, timezone: str
+    ) -> Profile:
         """Create the one-to-one profile attached to a user."""
         profile = Profile(
             user_id=user_id,

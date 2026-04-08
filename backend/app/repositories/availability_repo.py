@@ -12,7 +12,16 @@ class AvailabilityRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_block(self, *, user_id: int, day_of_week: int | None, start_time: object, end_time: object, is_recurring: bool, specific_date: object) -> AvailabilityBlock:
+    def create_block(
+        self,
+        *,
+        user_id: int,
+        day_of_week: int | None,
+        start_time: object,
+        end_time: object,
+        is_recurring: bool,
+        specific_date: object
+    ) -> AvailabilityBlock:
         """Insert one availability block for a user."""
         block = AvailabilityBlock(
             user_id=user_id,
@@ -41,7 +50,9 @@ class AvailabilityRepository:
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def update_block(self, block: AvailabilityBlock, **updates: object) -> AvailabilityBlock:
+    def update_block(
+        self, block: AvailabilityBlock, **updates: object
+    ) -> AvailabilityBlock:
         """Apply field updates to an existing availability block."""
         for field, value in updates.items():
             setattr(block, field, value)

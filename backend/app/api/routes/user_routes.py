@@ -27,30 +27,50 @@ def get_user_handler(db: Annotated[Session, Depends(get_db)]) -> UserHandler:
 
 
 @router.get("/me", response_model=UserResponse)
-def get_me(current_user_id: CurrentUserId, handler: Annotated[UserHandler, Depends(get_user_handler)]) -> UserResponse:
+def get_me(
+    current_user_id: CurrentUserId,
+    handler: Annotated[UserHandler, Depends(get_user_handler)],
+) -> UserResponse:
     """Return the authenticated user's account data."""
     return handler.getCurrentUser(current_user_id)
 
 
 @router.patch("/me", response_model=UserResponse)
-def update_me(payload: UserUpdateRequest, current_user_id: CurrentUserId, handler: Annotated[UserHandler, Depends(get_user_handler)]) -> UserResponse:
+def update_me(
+    payload: UserUpdateRequest,
+    current_user_id: CurrentUserId,
+    handler: Annotated[UserHandler, Depends(get_user_handler)],
+) -> UserResponse:
     """Update the authenticated user's account data."""
     return handler.updateCurrentUser(current_user_id, payload)
 
 
 @router.get("/me/profile", response_model=ProfileResponse)
-def get_profile(current_user_id: CurrentUserId, handler: Annotated[UserHandler, Depends(get_user_handler)]) -> ProfileResponse:
+def get_profile(
+    current_user_id: CurrentUserId,
+    handler: Annotated[UserHandler, Depends(get_user_handler)],
+) -> ProfileResponse:
     """Return the authenticated user's profile."""
     return handler.getCurrentUserProfile(current_user_id)
 
 
-@router.post("/me/profile", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED)
-def create_profile(payload: ProfileCreateRequest, current_user_id: CurrentUserId, handler: Annotated[UserHandler, Depends(get_user_handler)]) -> ProfileResponse:
+@router.post(
+    "/me/profile", response_model=ProfileResponse, status_code=status.HTTP_201_CREATED
+)
+def create_profile(
+    payload: ProfileCreateRequest,
+    current_user_id: CurrentUserId,
+    handler: Annotated[UserHandler, Depends(get_user_handler)],
+) -> ProfileResponse:
     """Create the authenticated user's profile."""
     return handler.createCurrentUserProfile(current_user_id, payload)
 
 
 @router.patch("/me/profile", response_model=ProfileResponse)
-def update_profile(payload: ProfileUpdateRequest, current_user_id: CurrentUserId, handler: Annotated[UserHandler, Depends(get_user_handler)]) -> ProfileResponse:
+def update_profile(
+    payload: ProfileUpdateRequest,
+    current_user_id: CurrentUserId,
+    handler: Annotated[UserHandler, Depends(get_user_handler)],
+) -> ProfileResponse:
     """Update the authenticated user's profile."""
     return handler.updateCurrentUserProfile(current_user_id, payload)

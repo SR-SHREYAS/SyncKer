@@ -19,7 +19,16 @@ logger = get_logger(__name__)
 class SchedulingService:
     """Business rules for generating and managing suggestions."""
 
-    def __init__(self, suggestion_repo: SuggestionRepository, scheduler_engine: SchedulerEngine, task_repo: TaskRepository, availability_repo: AvailabilityRepository, routine_repo: RoutineRepository, skill_repo: SkillRepository, team_service: TeamService) -> None:
+    def __init__(
+        self,
+        suggestion_repo: SuggestionRepository,
+        scheduler_engine: SchedulerEngine,
+        task_repo: TaskRepository,
+        availability_repo: AvailabilityRepository,
+        routine_repo: RoutineRepository,
+        skill_repo: SkillRepository,
+        team_service: TeamService,
+    ) -> None:
         self.suggestion_repo = suggestion_repo
         self.scheduler_engine = scheduler_engine
         self.task_repo = task_repo
@@ -28,7 +37,18 @@ class SchedulingService:
         self.skill_repo = skill_repo
         self.team_service = team_service
 
-    def GenerateSchedulingSuggestion(self, *, team_id: int, generated_for_user_id: int, participant_user_ids: list[int], collaboration_title: str, skill_id: int | None, window_start_at: object, window_end_at: object, minimum_duration_minutes: int) -> SessionSuggestion:
+    def GenerateSchedulingSuggestion(
+        self,
+        *,
+        team_id: int,
+        generated_for_user_id: int,
+        participant_user_ids: list[int],
+        collaboration_title: str,
+        skill_id: int | None,
+        window_start_at: object,
+        window_end_at: object,
+        minimum_duration_minutes: int
+    ) -> SessionSuggestion:
         """Generate and save one planning-aware session suggestion."""
         self._ensure_participants_are_in_team(
             team_id=team_id,
@@ -78,7 +98,13 @@ class SchedulingService:
         logger.info("scheduling generate service completed")
         return suggestion
 
-    def _ensure_participants_are_in_team(self, *, team_id: int, generated_for_user_id: int, participant_user_ids: list[int]) -> None:
+    def _ensure_participants_are_in_team(
+        self,
+        *,
+        team_id: int,
+        generated_for_user_id: int,
+        participant_user_ids: list[int]
+    ) -> None:
         """Ensure scheduling request uses one real team and valid members."""
         self.team_service.AssertUserBelongsToTeam(
             team_id=team_id, user_id=generated_for_user_id
@@ -94,7 +120,9 @@ class SchedulingService:
         logger.info("scheduling list service completed")
         return suggestions
 
-    def UpdateSchedulingSuggestionStatus(self, user_id: int, suggestion_id: int, *, status: SuggestionStatus) -> SessionSuggestion:
+    def UpdateSchedulingSuggestionStatus(
+        self, user_id: int, suggestion_id: int, *, status: SuggestionStatus
+    ) -> SessionSuggestion:
         """Update the status of one owned suggestion."""
         suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
         if suggestion is None or suggestion.generated_for_user_id != user_id:

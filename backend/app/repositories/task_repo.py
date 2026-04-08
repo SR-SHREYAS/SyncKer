@@ -12,7 +12,18 @@ class TaskRepository:
     def __init__(self, db: Session) -> None:
         self.db = db
 
-    def create_task(self, *, user_id: int, title: str, description: str | None, priority: str, status: str, estimated_minutes: int, deadline_at: object, skill_id: int | None) -> Task:
+    def create_task(
+        self,
+        *,
+        user_id: int,
+        title: str,
+        description: str | None,
+        priority: str,
+        status: str,
+        estimated_minutes: int,
+        deadline_at: object,
+        skill_id: int | None
+    ) -> Task:
         """Insert one task for a user."""
         task = Task(
             user_id=user_id,
@@ -36,7 +47,9 @@ class TaskRepository:
 
     def list_tasks_by_user(self, user_id: int) -> list[Task]:
         """Return all tasks owned by one user."""
-        stmt = select(Task).where(Task.user_id == user_id).order_by(Task.created_at.desc())
+        stmt = (
+            select(Task).where(Task.user_id == user_id).order_by(Task.created_at.desc())
+        )
         return list(self.db.execute(stmt).scalars().all())
 
     def list_tasks_by_users(self, *, user_ids: list[int]) -> list[Task]:

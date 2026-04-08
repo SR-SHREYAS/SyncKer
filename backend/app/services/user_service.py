@@ -34,7 +34,9 @@ class UserService:
         logger.info("user details service completed")
         return UserDetailsResult(user=user, profile=user.profile)
 
-    def UpdateCurrentUser(self, user_id: int, *, username: str | None = None) -> UserDetailsResult:
+    def UpdateCurrentUser(
+        self, user_id: int, *, username: str | None = None
+    ) -> UserDetailsResult:
         """Update allowed user fields after validation."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
@@ -55,7 +57,9 @@ class UserService:
         logger.info("user update service completed")
         return UserDetailsResult(user=user, profile=user.profile)
 
-    def CreateCurrentUserProfile(self, user_id: int, *, full_name: str, bio: str | None, role: str, timezone: str) -> Profile:
+    def CreateCurrentUserProfile(
+        self, user_id: int, *, full_name: str, bio: str | None, role: str, timezone: str
+    ) -> Profile:
         """Create the profile for one existing user."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:
@@ -77,7 +81,15 @@ class UserService:
         logger.info("profile create service completed")
         return profile
 
-    def UpdateCurrentUserProfile(self, user_id: int, *, full_name: str | None = None, bio: str | None = None, role: str | None = None, timezone: str | None = None) -> Profile:
+    def UpdateCurrentUserProfile(
+        self,
+        user_id: int,
+        *,
+        full_name: str | None = None,
+        bio: str | None = None,
+        role: str | None = None,
+        timezone: str | None = None
+    ) -> Profile:
         """Update profile fields for one existing user."""
         user = self.user_repo.get_by_id(user_id)
         if user is None:

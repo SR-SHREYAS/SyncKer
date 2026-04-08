@@ -27,19 +27,34 @@ def get_session_handler(db: Annotated[Session, Depends(get_db)]) -> SessionHandl
     return SessionHandler(session_service)
 
 
-@router.post("/from-suggestion", response_model=SessionDetailResponse, status_code=status.HTTP_201_CREATED)
-def create_session_from_suggestion(payload: SessionCreateFromSuggestionRequest, current_user_id: CurrentUserId, handler: Annotated[SessionHandler, Depends(get_session_handler)]) -> SessionDetailResponse:
+@router.post(
+    "/from-suggestion",
+    response_model=SessionDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_session_from_suggestion(
+    payload: SessionCreateFromSuggestionRequest,
+    current_user_id: CurrentUserId,
+    handler: Annotated[SessionHandler, Depends(get_session_handler)],
+) -> SessionDetailResponse:
     """Create one booked session from a suggestion."""
     return handler.createSessionFromSuggestion(current_user_id, payload)
 
 
 @router.get("", response_model=list[SessionResponse])
-def list_sessions(current_user_id: CurrentUserId, handler: Annotated[SessionHandler, Depends(get_session_handler)]) -> list[SessionResponse]:
+def list_sessions(
+    current_user_id: CurrentUserId,
+    handler: Annotated[SessionHandler, Depends(get_session_handler)],
+) -> list[SessionResponse]:
     """Return sessions created by the authenticated user."""
     return handler.listSessions(current_user_id)
 
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
-def get_session(session_id: int, current_user_id: CurrentUserId, handler: Annotated[SessionHandler, Depends(get_session_handler)]) -> SessionDetailResponse:
+def get_session(
+    session_id: int,
+    current_user_id: CurrentUserId,
+    handler: Annotated[SessionHandler, Depends(get_session_handler)],
+) -> SessionDetailResponse:
     """Return one owned session with participants."""
     return handler.getSessionById(current_user_id, session_id)
