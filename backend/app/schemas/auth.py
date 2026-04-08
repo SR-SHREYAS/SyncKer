@@ -26,7 +26,9 @@ class RegisterRequest(BaseModel):
 
     @field_validator("username", "password", mode="before")
     @classmethod
-    def normalize_non_empty_text_fields(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_non_empty_text_fields(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_required_text(value, field_name=info.field_name)
 
 
@@ -36,7 +38,9 @@ class LoginRequest(BaseModel):
 
     @field_validator("password", mode="before")
     @classmethod
-    def normalize_password_non_empty(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_password_non_empty(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_required_text(value, field_name=info.field_name)
 
 

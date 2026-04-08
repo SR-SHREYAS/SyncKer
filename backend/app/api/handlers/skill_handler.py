@@ -51,7 +51,9 @@ class SkillHandler:
             logger.exception("skill list catalog handler failed")
             raise
 
-    def attachSkillToCurrentUser(self, user_id: int, payload: UserSkillCreateRequest) -> UserSkillResponse:
+    def attachSkillToCurrentUser(
+        self, user_id: int, payload: UserSkillCreateRequest
+    ) -> UserSkillResponse:
         """Handle user-skill creation requests."""
         try:
             # Validate request input.

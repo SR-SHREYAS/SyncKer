@@ -8,7 +8,18 @@ from app.ai.scoring import score_candidate
 class SchedulerEngine:
     """Small rule-based engine for first-release suggestions."""
 
-    def generate(self, *, participant_user_ids: list[int], skill_id: int, minimum_duration_minutes: int, window_start_at, window_end_at, tasks: list[object], availability_blocks: list[object], routine_blocks: list[object]) -> dict[str, object]:
+    def generate(
+        self,
+        *,
+        participant_user_ids: list[int],
+        skill_id: int,
+        minimum_duration_minutes: int,
+        window_start_at,
+        window_end_at,
+        tasks: list[object],
+        availability_blocks: list[object],
+        routine_blocks: list[object]
+    ) -> dict[str, object]:
         """Generate one session suggestion with planning-aware rules."""
         resolved_start, resolved_end = resolve_window(
             window_start_at,

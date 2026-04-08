@@ -63,7 +63,9 @@ class AuthHandler:
             logger.exception("auth login handler failed")
             raise
 
-    def _build_auth_response(self, user: object, access_token: str, expires_at: object) -> AuthResponse:
+    def _build_auth_response(
+        self, user: object, access_token: str, expires_at: object
+    ) -> AuthResponse:
         """Keep auth response mapping in one place for both flows."""
         return AuthResponse(
             user=AuthUserResponse.model_validate(user),

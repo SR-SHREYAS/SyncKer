@@ -48,7 +48,9 @@ class TaskUpdateRequest(BaseModel):
 
     @field_validator("title", mode="before")
     @classmethod
-    def normalize_optional_title_not_blank(cls, value: object, info: ValidationInfo) -> object:
+    def normalize_optional_title_not_blank(
+        cls, value: object, info: ValidationInfo
+    ) -> object:
         return normalize_optional_text(value, field_name=info.field_name)
 
 

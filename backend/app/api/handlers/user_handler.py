@@ -38,7 +38,9 @@ class UserHandler:
             logger.exception("user get current user handler failed")
             raise
 
-    def updateCurrentUser(self, user_id: int, payload: UserUpdateRequest) -> UserResponse:
+    def updateCurrentUser(
+        self, user_id: int, payload: UserUpdateRequest
+    ) -> UserResponse:
         """Update current-user account fields."""
         try:
             # Validate request input.
@@ -74,7 +76,9 @@ class UserHandler:
             logger.exception("user get current user profile handler failed")
             raise
 
-    def createCurrentUserProfile(self, user_id: int, payload: ProfileCreateRequest) -> ProfileResponse:
+    def createCurrentUserProfile(
+        self, user_id: int, payload: ProfileCreateRequest
+    ) -> ProfileResponse:
         """Create the current user's profile."""
         try:
             # Validate request input.
@@ -95,7 +99,9 @@ class UserHandler:
             logger.exception("user create current user profile handler failed")
             raise
 
-    def updateCurrentUserProfile(self, user_id: int, payload: ProfileUpdateRequest) -> ProfileResponse:
+    def updateCurrentUserProfile(
+        self, user_id: int, payload: ProfileUpdateRequest
+    ) -> ProfileResponse:
         """Update the current user's profile."""
         try:
             # Validate request input.

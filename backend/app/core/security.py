@@ -39,7 +39,9 @@ def verify_password(password: str, password_hash: str) -> bool:
     return hmac.compare_digest(candidate_hash, expected_hash)
 
 
-def create_access_token(subject: str | int, expires_delta: timedelta | None = None) -> tuple[str, datetime]:
+def create_access_token(
+    subject: str | int, expires_delta: timedelta | None = None
+) -> tuple[str, datetime]:
     """Create a signed JWT access token for one authenticated user."""
     expires_at = datetime.now(UTC) + (
         expires_delta or timedelta(minutes=settings.access_token_expire_minutes)

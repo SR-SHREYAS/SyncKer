@@ -3,7 +3,13 @@
 from datetime import datetime
 
 
-def score_candidate(*, window_start_at: datetime, suggested_start_at: datetime, minimum_duration_minutes: int, related_tasks: list[object]) -> float:
+def score_candidate(
+    *,
+    window_start_at: datetime,
+    suggested_start_at: datetime,
+    minimum_duration_minutes: int,
+    related_tasks: list[object]
+) -> float:
     """Return a simple score for one generated slot.
 
     Earlier valid slots score higher, and relevant urgent tasks push the score up.
