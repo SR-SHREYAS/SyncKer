@@ -318,6 +318,9 @@ def pick_first_common_slot(
 
     window_start_at = normalize_datetime_to_utc(window_start_at)
     window_end_at = normalize_datetime_to_utc(window_end_at)
+    if window_end_at <= window_start_at:
+        raise ValueError("window_end_at must be greater than window_start_at")
+
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
 
     if not participant_user_ids:

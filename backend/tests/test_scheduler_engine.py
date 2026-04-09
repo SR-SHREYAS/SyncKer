@@ -8,6 +8,7 @@ from app.ai.contracts import (
     SLOT_REASON_NO_OVERLAP,
     SLOT_REASON_NO_PARTICIPANTS,
 )
+from app.ai.intersection import pick_first_common_slot
 from app.ai.scheduler_engine import SchedulerEngine
 
 
@@ -451,4 +452,19 @@ def test_scheduler_engine_rejects_non_positive_minimum_duration() -> None:
             tasks=[],
             availability_blocks=[],
             routine_blocks=[],
+        )
+
+
+def test_pick_first_common_slot_rejects_non_positive_window() -> None:
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+
+    with pytest.raises(ValueError):
+        pick_first_common_slot(
+            participant_user_ids=[1],
+            window_start_at=now,
+            window_end_at=now,
+            minimum_duration_minutes=30,
+            availability_blocks=[],
+            routine_blocks=[],
+            tasks=[],
         )
