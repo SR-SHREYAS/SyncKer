@@ -136,6 +136,62 @@ def test_scheduler_engine_finds_true_common_slot_for_three_participants() -> Non
     assert result["suggested_end_at"] == expected_start + timedelta(minutes=30)
 
 
+def test_scheduler_engine_applies_participant_routine_blocks_in_intersection() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+    availability = [
+        SimpleNamespace(
+            user_id=1,
+            day_of_week=now.weekday(),
+            start_time=(now + timedelta(hours=0)).time(),
+            end_time=(now + timedelta(hours=3)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+        SimpleNamespace(
+            user_id=2,
+            day_of_week=now.weekday(),
+            start_time=(now + timedelta(hours=0)).time(),
+            end_time=(now + timedelta(hours=3)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+        SimpleNamespace(
+            user_id=3,
+            day_of_week=now.weekday(),
+            start_time=(now + timedelta(hours=0)).time(),
+            end_time=(now + timedelta(hours=3)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+    ]
+    routine_blocks = [
+        SimpleNamespace(
+            user_id=2,
+            day_of_week=now.weekday(),
+            start_time=(now + timedelta(hours=0)).time(),
+            end_time=(now + timedelta(hours=1)).time(),
+            is_recurring=True,
+            specific_date=None,
+        )
+    ]
+
+    result = engine.generate(
+        participant_user_ids=[1, 2, 3],
+        skill_id=10,
+        minimum_duration_minutes=60,
+        window_start_at=now,
+        window_end_at=now + timedelta(days=1),
+        tasks=[],
+        availability_blocks=availability,
+        routine_blocks=routine_blocks,
+    )
+
+    expected_start = now + timedelta(hours=1)
+    assert result["suggested_start_at"] == expected_start
+    assert result["suggested_end_at"] == expected_start + timedelta(hours=1)
+
+
 def test_scheduler_engine_falls_back_when_no_common_slot_exists() -> None:
     engine = SchedulerEngine()
     now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
