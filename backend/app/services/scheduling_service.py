@@ -309,8 +309,9 @@ class SchedulingService:
                 )
 
             shifted_end_at = shifted_start_at + task_duration
-            merged_intervals = self._merge_intervals(
-                [*merged_intervals, (shifted_start_at, shifted_end_at)]
+            self._insert_merged_interval(
+                merged_intervals=merged_intervals,
+                interval=(shifted_start_at, shifted_end_at),
             )
             if (
                 shifted_start_at != original_start_at
@@ -401,6 +402,31 @@ class SchedulingService:
         ):
             return None
         return resolved_start
+
+    def _insert_merged_interval(
+        self,
+        *,
+        merged_intervals: list[tuple[datetime, datetime]],
+        interval: tuple[datetime, datetime],
+    ) -> None:
+        """Insert one interval into sorted merged intervals with local merge."""
+        interval_start_at, interval_end_at = interval
+        insert_index = 0
+        while (
+            insert_index < len(merged_intervals)
+            and merged_intervals[insert_index][1] < interval_start_at
+        ):
+            insert_index += 1
+
+        while (
+            insert_index < len(merged_intervals)
+            and merged_intervals[insert_index][0] <= interval_end_at
+        ):
+            existing_start_at, existing_end_at = merged_intervals.pop(insert_index)
+            interval_start_at = min(interval_start_at, existing_start_at)
+            interval_end_at = max(interval_end_at, existing_end_at)
+
+        merged_intervals.insert(insert_index, (interval_start_at, interval_end_at))
 
     def _intervals_overlap(
         self,
