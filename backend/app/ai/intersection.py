@@ -1,8 +1,10 @@
 """Availability intersection logic."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Literal, Sequence
 
+from app.ai.contracts import ParticipantPlannedTask, ParticipantTimeBlock
+from app.ai.datetime_utils import normalize_datetime_to_utc
 from app.ai.time_windows import merge_intervals
 
 
@@ -14,7 +16,7 @@ def _belongs_to_participant(record: object, participant_user_id: int) -> bool:
     record_user_id = getattr(record, "user_id", None)
     if record_user_id is None:
         return True
-    return int(record_user_id) == participant_user_id
+    return record_user_id == participant_user_id
 
 
 def _clip_interval_to_window(
@@ -25,10 +27,10 @@ def _clip_interval_to_window(
     window_end_at: datetime,
 ) -> tuple[datetime, datetime] | None:
     """Clip one interval to the scheduling window."""
-    interval_start_at = _normalize_datetime_to_utc(interval_start_at)
-    interval_end_at = _normalize_datetime_to_utc(interval_end_at)
-    window_start_at = _normalize_datetime_to_utc(window_start_at)
-    window_end_at = _normalize_datetime_to_utc(window_end_at)
+    interval_start_at = normalize_datetime_to_utc(interval_start_at)
+    interval_end_at = normalize_datetime_to_utc(interval_end_at)
+    window_start_at = normalize_datetime_to_utc(window_start_at)
+    window_end_at = normalize_datetime_to_utc(window_end_at)
     clipped_start_at = max(interval_start_at, window_start_at)
     clipped_end_at = min(interval_end_at, window_end_at)
     if clipped_end_at <= clipped_start_at:
@@ -36,19 +38,9 @@ def _clip_interval_to_window(
     return clipped_start_at, clipped_end_at
 
 
-def _normalize_datetime_to_utc(value: datetime) -> datetime:
-    """Normalize datetimes to UTC-aware for consistent comparisons.
-
-    Naive datetimes are treated as UTC by contract in this scheduler layer.
-    """
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
-
-
 def _build_time_block_intervals(
     *,
-    blocks: list[object],
+    blocks: Sequence[ParticipantTimeBlock],
     window_start_at: datetime,
     window_end_at: datetime,
 ) -> list[tuple[datetime, datetime]]:
@@ -92,7 +84,7 @@ def _build_time_block_intervals(
 
 def _build_task_busy_intervals(
     *,
-    tasks: list[object],
+    tasks: Sequence[ParticipantPlannedTask],
     window_start_at: datetime,
     window_end_at: datetime,
 ) -> list[tuple[datetime, datetime]]:
@@ -180,9 +172,9 @@ def _build_participant_free_intervals(
     participant_user_id: int,
     window_start_at: datetime,
     window_end_at: datetime,
-    availability_blocks: list[object],
-    routine_blocks: list[object],
-    tasks: list[object],
+    availability_blocks: Sequence[ParticipantTimeBlock],
+    routine_blocks: Sequence[ParticipantTimeBlock],
+    tasks: Sequence[ParticipantPlannedTask],
 ) -> list[tuple[datetime, datetime]]:
     """Build one participant's free intervals in the window."""
     participant_availability_blocks = [
@@ -230,13 +222,13 @@ def pick_first_common_slot(
     window_start_at: datetime,
     window_end_at: datetime,
     minimum_duration_minutes: int,
-    availability_blocks: list[object],
-    routine_blocks: list[object],
-    tasks: list[object],
+    availability_blocks: Sequence[ParticipantTimeBlock],
+    routine_blocks: Sequence[ParticipantTimeBlock],
+    tasks: Sequence[ParticipantPlannedTask],
 ) -> tuple[datetime, datetime, Literal["found", "no_overlap", "no_participants"]]:
     """Return earliest common slot using participant free-window intersections."""
-    window_start_at = _normalize_datetime_to_utc(window_start_at)
-    window_end_at = _normalize_datetime_to_utc(window_end_at)
+    window_start_at = normalize_datetime_to_utc(window_start_at)
+    window_end_at = normalize_datetime_to_utc(window_end_at)
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
 
     if not participant_user_ids:

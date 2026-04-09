@@ -1,6 +1,10 @@
 """Rule-based scheduling engine."""
 
+from datetime import datetime
+from typing import Sequence
+
 from app.ai.constraints import resolve_window
+from app.ai.contracts import ParticipantPlannedTask, ParticipantTimeBlock
 from app.ai.intersection import pick_first_common_slot
 from app.ai.scoring import score_candidate
 
@@ -14,11 +18,11 @@ class SchedulerEngine:
         participant_user_ids: list[int],
         skill_id: int,
         minimum_duration_minutes: int,
-        window_start_at,
-        window_end_at,
-        tasks: list[object],
-        availability_blocks: list[object],
-        routine_blocks: list[object]
+        window_start_at: datetime | None,
+        window_end_at: datetime | None,
+        tasks: Sequence[ParticipantPlannedTask],
+        availability_blocks: Sequence[ParticipantTimeBlock],
+        routine_blocks: Sequence[ParticipantTimeBlock],
     ) -> dict[str, object]:
         """Generate one session suggestion with planning-aware rules."""
         resolved_start, resolved_end = resolve_window(

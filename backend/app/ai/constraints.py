@@ -1,6 +1,8 @@
 """Scheduling hard and soft constraints."""
 
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
+
+from app.ai.datetime_utils import normalize_datetime_to_utc
 
 
 def to_datetime_range(
@@ -19,20 +21,13 @@ def resolve_window(
     minimum_duration_minutes: int,
 ) -> tuple[datetime, datetime]:
     """Pick a valid scheduling window for the rule engine."""
-    start = _normalize_datetime_to_utc(window_start_at or datetime.now(UTC))
-    end = _normalize_datetime_to_utc(window_end_at or (start + timedelta(days=3)))
+    start = normalize_datetime_to_utc(window_start_at or datetime.now())
+    end = normalize_datetime_to_utc(window_end_at or (start + timedelta(days=3)))
 
     if end <= start:
         end = start + timedelta(minutes=minimum_duration_minutes)
 
     return start, end
-
-
-def _normalize_datetime_to_utc(value: datetime) -> datetime:
-    """Normalize datetimes to UTC-aware for scheduler comparisons."""
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
 
 
 def overlaps(
