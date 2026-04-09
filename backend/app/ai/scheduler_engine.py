@@ -29,17 +29,22 @@ class SchedulerEngine:
         related_tasks = [
             task for task in tasks if task.skill_id is None or task.skill_id == skill_id
         ]
-        suggested_start_at, suggested_end_at = pick_first_common_slot(
-            window_start_at=resolved_start,
-            window_end_at=resolved_end,
-            minimum_duration_minutes=minimum_duration_minutes,
-            availability_blocks=availability_blocks,
-            routine_blocks=routine_blocks,
+        suggested_start_at, suggested_end_at, found_common_slot = (
+            pick_first_common_slot(
+                participant_user_ids=participant_user_ids,
+                window_start_at=resolved_start,
+                window_end_at=resolved_end,
+                minimum_duration_minutes=minimum_duration_minutes,
+                availability_blocks=availability_blocks,
+                routine_blocks=routine_blocks,
+                tasks=tasks,
+            )
         )
 
         if suggested_end_at > resolved_end:
             suggested_start_at = resolved_start
             suggested_end_at = resolved_start
+            found_common_slot = False
 
         score = score_candidate(
             window_start_at=resolved_start,
@@ -48,10 +53,13 @@ class SchedulerEngine:
             related_tasks=related_tasks,
         )
 
-        explanation = (
-            "Suggested this slot using availability, routine conflicts, "
-            "and tasks related to the selected skill."
-        )
+        if found_common_slot:
+            explanation = (
+                "Suggested earliest common slot by intersecting participant availability "
+                "and subtracting routine and planned-task conflicts."
+            )
+        else:
+            explanation = "No common slot found in the requested window; returned fallback at window start."
 
         return {
             "participant_user_ids": participant_user_ids,
