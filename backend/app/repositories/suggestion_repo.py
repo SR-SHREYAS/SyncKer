@@ -81,6 +81,11 @@ class SuggestionRepository:
         **updates: object,
     ) -> SessionSuggestion:
         """Apply field updates to an existing suggestion."""
+        if not auto_commit and not self._has_active_transaction():
+            raise RuntimeError(
+                "suggestion update with auto_commit=False requires an active transaction"
+            )
+
         for field, value in updates.items():
             setattr(suggestion, field, value)
 
@@ -89,9 +94,9 @@ class SuggestionRepository:
             self.db.commit()
             self.db.refresh(suggestion)
         else:
-            if self.db.in_transaction() is None:
-                raise RuntimeError(
-                    "suggestion update with auto_commit=False requires an active transaction"
-                )
             self.db.flush()
         return suggestion
+
+    def _has_active_transaction(self) -> bool:
+        """Return True when Session currently has an active transaction."""
+        return bool(self.db.in_transaction())

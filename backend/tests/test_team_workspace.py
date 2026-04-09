@@ -152,6 +152,28 @@ class _FakeTaskRepo:
     def list_tasks_by_user(self, user_id: int):
         return list(self.tasks_by_user.get(user_id, []))
 
+    def has_planned_overlap_for_user(
+        self,
+        *,
+        user_id: int,
+        planned_start_at: datetime,
+        planned_end_at: datetime,
+        for_update: bool = False,
+    ) -> bool:
+        user_tasks = self.tasks_by_user.get(user_id, [])
+        for user_task in user_tasks:
+            existing_start_at = getattr(user_task, "planned_start_at", None)
+            existing_end_at = getattr(user_task, "planned_end_at", None)
+            if existing_start_at is None or existing_end_at is None:
+                continue
+            overlaps = (
+                planned_start_at < existing_end_at
+                and existing_start_at < planned_end_at
+            )
+            if overlaps:
+                return True
+        return False
+
     def create_task(
         self,
         *,

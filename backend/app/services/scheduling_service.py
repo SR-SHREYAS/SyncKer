@@ -1,7 +1,5 @@
 """Scheduling business logic."""
 
-from datetime import datetime
-
 from app.ai.scheduler_engine import SchedulerEngine
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.enums import SuggestionStatus, TaskPriority, TaskStatus
@@ -14,7 +12,6 @@ from app.repositories.task_repo import TaskRepository
 from app.services.team_service import TeamService
 from app.utils.logger import get_logger
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -39,7 +36,6 @@ class SchedulingService:
         self.routine_repo = routine_repo
         self.skill_repo = skill_repo
         self.team_service = team_service
-        self.db_session = self._ensure_shared_db_session()
 
     def GenerateSchedulingSuggestion(
         self,
@@ -141,7 +137,7 @@ class SchedulingService:
         self, user_id: int, suggestion_id: int
     ) -> SessionSuggestion:
         """Apply one pending suggestion by writing collaboration tasks."""
-        with self.db_session.begin():
+        with self._get_shared_db_session().begin():
             suggestion = self.suggestion_repo.get_suggestion_by_id_for_update(
                 suggestion_id
             )
@@ -165,13 +161,11 @@ class SchedulingService:
                 )
 
             for participant_user_id in suggestion.participant_user_ids:
-                participant_tasks = self.task_repo.list_tasks_by_user(
-                    participant_user_id
-                )
-                has_conflict = self._has_planned_time_conflict(
-                    existing_tasks=participant_tasks,
+                has_conflict = self.task_repo.has_planned_overlap_for_user(
+                    user_id=participant_user_id,
                     planned_start_at=suggestion.suggested_start_at,
                     planned_end_at=suggestion.suggested_end_at,
+                    for_update=True,
                 )
                 if has_conflict:
                     logger.error(
@@ -218,8 +212,8 @@ class SchedulingService:
         logger.info("scheduling apply service completed")
         return suggestion
 
-    def _ensure_shared_db_session(self) -> Session:
-        """Ensure repos participating in one unit of work share one DB session."""
+    def _get_shared_db_session(self):
+        """Return one shared DB session for repositories in this unit of work."""
         suggestion_db_session = getattr(self.suggestion_repo, "db", None)
         task_db_session = getattr(self.task_repo, "db", None)
         if suggestion_db_session is None or task_db_session is None:
@@ -258,25 +252,3 @@ class SchedulingService:
             if existing_after_race is not None:
                 return existing_after_race.id
             raise
-
-    def _has_planned_time_conflict(
-        self,
-        *,
-        existing_tasks: list[object],
-        planned_start_at: datetime,
-        planned_end_at: datetime,
-    ) -> bool:
-        """Return True when an existing planned block overlaps requested slot."""
-        for task in existing_tasks:
-            existing_start_at = getattr(task, "planned_start_at", None)
-            existing_end_at = getattr(task, "planned_end_at", None)
-            if existing_start_at is None or existing_end_at is None:
-                continue
-
-            overlaps = (
-                planned_start_at < existing_end_at
-                and existing_start_at < planned_end_at
-            )
-            if overlaps:
-                return True
-        return False
