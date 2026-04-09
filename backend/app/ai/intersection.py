@@ -124,10 +124,15 @@ def _subtract_intervals(
     blocked_intervals: list[tuple[datetime, datetime]],
 ) -> list[tuple[datetime, datetime]]:
     """Subtract blocked intervals from available intervals."""
+    normalized_blocked_intervals = merge_intervals(blocked_intervals)
+    if __debug__:
+        _assert_canonical_intervals(available_intervals)
+        _assert_canonical_intervals(normalized_blocked_intervals)
+
     free_intervals: list[tuple[datetime, datetime]] = []
     for available_start_at, available_end_at in available_intervals:
         cursor = available_start_at
-        for blocked_start_at, blocked_end_at in blocked_intervals:
+        for blocked_start_at, blocked_end_at in normalized_blocked_intervals:
             if blocked_end_at <= cursor:
                 continue
             if blocked_start_at >= available_end_at:
@@ -256,15 +261,9 @@ def pick_first_common_slot(
     routine_blocks: Sequence[ParticipantTimeBlock],
     tasks: Sequence[ParticipantPlannedTask],
 ) -> tuple[datetime, datetime, Literal["found", "no_overlap", "no_participants"]]:
-    """Return earliest common slot using participant free-window intersections.
-
-    This function assumes window_start_at/window_end_at are already UTC-aware.
-    """
-    if __debug__:
-        assert (
-            window_start_at.tzinfo is not None
-        ), "window_start_at must be timezone-aware"
-        assert window_end_at.tzinfo is not None, "window_end_at must be timezone-aware"
+    """Return earliest common slot using participant free-window intersections."""
+    window_start_at = normalize_datetime_to_utc(window_start_at)
+    window_end_at = normalize_datetime_to_utc(window_end_at)
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
 
     if not participant_user_ids:
