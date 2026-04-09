@@ -26,11 +26,10 @@ def _clip_interval_to_window(
     window_start_at: datetime,
     window_end_at: datetime,
 ) -> tuple[datetime, datetime] | None:
-    """Clip one interval to the scheduling window."""
-    interval_start_at = normalize_datetime_to_utc(interval_start_at)
-    interval_end_at = normalize_datetime_to_utc(interval_end_at)
-    window_start_at = normalize_datetime_to_utc(window_start_at)
-    window_end_at = normalize_datetime_to_utc(window_end_at)
+    """Clip one interval to the scheduling window.
+
+    Inputs are expected to already be UTC-aware and normalized.
+    """
     clipped_start_at = max(interval_start_at, window_start_at)
     clipped_end_at = min(interval_end_at, window_end_at)
     if clipped_end_at <= clipped_start_at:
@@ -45,10 +44,12 @@ def _build_time_block_intervals(
     window_end_at: datetime,
 ) -> list[tuple[datetime, datetime]]:
     """Expand recurring and one-off blocks to concrete datetime intervals."""
+    normalized_window_start_at = normalize_datetime_to_utc(window_start_at)
+    normalized_window_end_at = normalize_datetime_to_utc(window_end_at)
     concrete_intervals: list[tuple[datetime, datetime]] = []
-    current_date = window_start_at.date()
+    current_date = normalized_window_start_at.date()
 
-    while current_date <= window_end_at.date():
+    while current_date <= normalized_window_end_at.date():
         for block in blocks:
             if block.is_recurring:
                 if block.day_of_week != current_date.weekday():
@@ -59,12 +60,12 @@ def _build_time_block_intervals(
             block_start_at = datetime.combine(
                 current_date,
                 block.start_time,
-                tzinfo=window_start_at.tzinfo,
+                tzinfo=normalized_window_start_at.tzinfo,
             )
             block_end_at = datetime.combine(
                 current_date,
                 block.end_time,
-                tzinfo=window_start_at.tzinfo,
+                tzinfo=normalized_window_start_at.tzinfo,
             )
             if block_end_at <= block_start_at:
                 continue
@@ -72,8 +73,8 @@ def _build_time_block_intervals(
             clipped_interval = _clip_interval_to_window(
                 interval_start_at=block_start_at,
                 interval_end_at=block_end_at,
-                window_start_at=window_start_at,
-                window_end_at=window_end_at,
+                window_start_at=normalized_window_start_at,
+                window_end_at=normalized_window_end_at,
             )
             if clipped_interval is not None:
                 concrete_intervals.append(clipped_interval)
@@ -89,20 +90,24 @@ def _build_task_busy_intervals(
     window_end_at: datetime,
 ) -> list[tuple[datetime, datetime]]:
     """Build concrete busy ranges from planned tasks."""
+    normalized_window_start_at = normalize_datetime_to_utc(window_start_at)
+    normalized_window_end_at = normalize_datetime_to_utc(window_end_at)
     busy_intervals: list[tuple[datetime, datetime]] = []
     for task in tasks:
-        task_start_at = getattr(task, "planned_start_at", None)
-        task_end_at = getattr(task, "planned_end_at", None)
+        task_start_at = task.planned_start_at
+        task_end_at = task.planned_end_at
         if task_start_at is None or task_end_at is None:
             continue
+        task_start_at = normalize_datetime_to_utc(task_start_at)
+        task_end_at = normalize_datetime_to_utc(task_end_at)
         if task_end_at <= task_start_at:
             continue
 
         clipped_interval = _clip_interval_to_window(
             interval_start_at=task_start_at,
             interval_end_at=task_end_at,
-            window_start_at=window_start_at,
-            window_end_at=window_end_at,
+            window_start_at=normalized_window_start_at,
+            window_end_at=normalized_window_end_at,
         )
         if clipped_interval is not None:
             busy_intervals.append(clipped_interval)
@@ -140,19 +145,21 @@ def _intersect_intervals(
     left_intervals: Sequence[tuple[datetime, datetime]],
     right_intervals: Sequence[tuple[datetime, datetime]],
 ) -> list[tuple[datetime, datetime]]:
-    """Return overlap of two interval lists after canonical normalization."""
-    normalized_left_intervals = merge_intervals(list(left_intervals))
-    normalized_right_intervals = merge_intervals(list(right_intervals))
+    """Return overlap of two canonical interval lists.
+
+    Inputs must be sorted and non-overlapping.
+    """
+    if __debug__:
+        _assert_canonical_intervals(left_intervals)
+        _assert_canonical_intervals(right_intervals)
 
     overlaps: list[tuple[datetime, datetime]] = []
     left_index = 0
     right_index = 0
 
-    while left_index < len(normalized_left_intervals) and right_index < len(
-        normalized_right_intervals
-    ):
-        left_start_at, left_end_at = normalized_left_intervals[left_index]
-        right_start_at, right_end_at = normalized_right_intervals[right_index]
+    while left_index < len(left_intervals) and right_index < len(right_intervals):
+        left_start_at, left_end_at = left_intervals[left_index]
+        right_start_at, right_end_at = right_intervals[right_index]
 
         overlap_start_at = max(left_start_at, right_start_at)
         overlap_end_at = min(left_end_at, right_end_at)
@@ -165,6 +172,26 @@ def _intersect_intervals(
             right_index += 1
 
     return overlaps
+
+
+def _assert_canonical_intervals(
+    intervals: Sequence[tuple[datetime, datetime]],
+) -> None:
+    """Assert intervals are sorted and non-overlapping."""
+    previous_end_at: datetime | None = None
+    previous_start_at: datetime | None = None
+    for interval_start_at, interval_end_at in intervals:
+        assert interval_start_at < interval_end_at, "interval duration must be positive"
+        if previous_start_at is not None:
+            assert (
+                interval_start_at >= previous_start_at
+            ), "intervals must be sorted by start"
+        if previous_end_at is not None:
+            assert (
+                interval_start_at >= previous_end_at
+            ), "intervals must be non-overlapping"
+        previous_start_at = interval_start_at
+        previous_end_at = interval_end_at
 
 
 def _build_participant_free_intervals(
