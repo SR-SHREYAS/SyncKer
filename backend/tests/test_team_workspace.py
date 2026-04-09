@@ -482,7 +482,7 @@ def test_apply_scheduling_suggestion_shifts_lower_priority_tasks() -> None:
     assert len(scenario.task_repo.created_tasks) == 2
 
 
-def test_apply_scheduling_suggestion_keeps_non_overlapping_task_beyond_horizon() -> (
+def test_apply_scheduling_suggestion_rejects_non_overlapping_task_beyond_horizon() -> (
     None
 ):
     scenario = _build_scheduling_scenario()
@@ -513,17 +513,19 @@ def test_apply_scheduling_suggestion_keeps_non_overlapping_task_beyond_horizon()
     )
     scenario.task_repo.tasks_by_user[2] = [future_task]
 
-    applied_suggestion = (
+    with pytest.raises(ConflictError):
         scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
             user_id=1,
             suggestion_id=seeded_suggestion.id,
         )
-    )
 
-    assert applied_suggestion.status == SuggestionStatus.ACCEPTED
+    assert scenario.task_repo.created_tasks == []
+    assert (
+        scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
+        == SuggestionStatus.PENDING
+    )
     assert future_task.planned_start_at == suggested_end_at + timedelta(hours=13)
     assert future_task.planned_end_at == suggested_end_at + timedelta(hours=14)
-    assert len(scenario.task_repo.created_tasks) == 2
 
 
 def test_apply_scheduling_suggestion_is_idempotent_for_accepted_status() -> None:
@@ -589,6 +591,49 @@ def test_apply_scheduling_suggestion_rejects_protected_task_overlap() -> None:
             deadline_at=None,
             planned_start_at=suggested_start_at + timedelta(minutes=15),
             planned_end_at=suggested_end_at + timedelta(minutes=15),
+            skill_id=None,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    ]
+
+    with pytest.raises(ConflictError):
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
+
+    assert scenario.task_repo.created_tasks == []
+    assert (
+        scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
+        == SuggestionStatus.PENDING
+    )
+
+
+def test_apply_scheduling_suggestion_rejects_unknown_priority_overlap() -> None:
+    scenario = _build_scheduling_scenario()
+    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
+    suggested_end_at = suggested_start_at + timedelta(minutes=60)
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=505,
+        status=SuggestionStatus.PENDING,
+        collaboration_title="Unknown priority conflict",
+        suggested_start_at=suggested_start_at,
+        suggested_end_at=suggested_end_at,
+    )
+    scenario.task_repo.tasks_by_user[2] = [
+        SimpleNamespace(
+            id=2,
+            user_id=2,
+            title="Unknown priority task",
+            description=None,
+            priority="urgent",
+            status="pending",
+            estimated_minutes=30,
+            deadline_at=None,
+            planned_start_at=suggested_start_at + timedelta(minutes=5),
+            planned_end_at=suggested_end_at + timedelta(minutes=5),
             skill_id=None,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),

@@ -3,6 +3,12 @@
 from datetime import datetime, timedelta
 
 from app.ai.scheduler_engine import SchedulerEngine
+from app.ai.time_windows import (
+    find_next_available_start,
+    insert_merged_interval,
+    intervals_overlap,
+    merge_intervals,
+)
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.enums import SuggestionStatus, TaskPriority, TaskStatus
 from app.models.session_suggestion import SessionSuggestion
@@ -251,7 +257,7 @@ class SchedulingService:
                 continue
 
             if self._is_protected_task(participant_task):
-                if self._intervals_overlap(
+                if intervals_overlap(
                     first_start=suggested_start_at,
                     first_end=suggested_end_at,
                     second_start=planned_start_at,
@@ -276,7 +282,7 @@ class SchedulingService:
             movable_tasks.append(participant_task)
 
         movable_tasks.sort(key=lambda task: (task.planned_start_at, task.id))
-        merged_intervals = self._merge_intervals(occupied_intervals)
+        merged_intervals = merge_intervals(occupied_intervals)
         shift_horizon_end = suggested_end_at + timedelta(hours=self.SHIFT_HORIZON_HOURS)
         planned_updates: list[tuple[Task, datetime, datetime]] = []
         for movable_task in movable_tasks:
@@ -286,7 +292,7 @@ class SchedulingService:
                 continue
 
             task_duration = original_end_at - original_start_at
-            shifted_start_at = self._find_next_available_start(
+            shifted_start_at = find_next_available_start(
                 candidate_start=original_start_at,
                 duration=task_duration,
                 occupied_intervals=merged_intervals,
@@ -309,7 +315,7 @@ class SchedulingService:
                 )
 
             shifted_end_at = shifted_start_at + task_duration
-            self._insert_merged_interval(
+            insert_merged_interval(
                 merged_intervals=merged_intervals,
                 interval=(shifted_start_at, shifted_end_at),
             )
@@ -327,6 +333,14 @@ class SchedulingService:
             task.priority,
             task_id=task.id,
         )
+        if task_priority is None:
+            logger.warning(
+                "scheduling defaulted unknown priority to protected task "
+                "task_id=%s raw_priority=%s",
+                task.id,
+                task.priority,
+            )
+            return True
         return task_priority == TaskPriority.HIGH
 
     def _normalize_task_priority(
@@ -342,102 +356,8 @@ class SchedulingService:
             normalized_priority = task_priority.strip().lower()
             if normalized_priority in {"low", "medium", "high"}:
                 return TaskPriority(normalized_priority)
-            logger.warning(
-                "scheduling priority normalization received unknown text priority "
-                "task_id=%s priority=%s",
-                task_id,
-                task_priority,
-            )
             return None
-        if task_priority is not None:
-            logger.warning(
-                "scheduling priority normalization received unsupported priority type "
-                "task_id=%s priority_type=%s",
-                task_id,
-                type(task_priority).__name__,
-            )
         return None
-
-    def _merge_intervals(
-        self,
-        intervals: list[tuple[datetime, datetime]],
-    ) -> list[tuple[datetime, datetime]]:
-        """Merge overlapping intervals to simplify availability checks."""
-        if not intervals:
-            return []
-        sorted_intervals = sorted(intervals, key=lambda item: item[0])
-        merged_intervals: list[tuple[datetime, datetime]] = [sorted_intervals[0]]
-        for next_start_at, next_end_at in sorted_intervals[1:]:
-            current_start_at, current_end_at = merged_intervals[-1]
-            if next_start_at <= current_end_at:
-                merged_intervals[-1] = (
-                    current_start_at,
-                    max(current_end_at, next_end_at),
-                )
-            else:
-                merged_intervals.append((next_start_at, next_end_at))
-        return merged_intervals
-
-    def _find_next_available_start(
-        self,
-        *,
-        candidate_start: datetime,
-        duration: timedelta,
-        occupied_intervals: list[tuple[datetime, datetime]],
-        horizon_end: datetime,
-    ) -> datetime | None:
-        """Return earliest non-overlapping start >= candidate_start within horizon."""
-        resolved_start = candidate_start
-        for occupied_start, occupied_end in occupied_intervals:
-            resolved_end = resolved_start + duration
-            if resolved_end <= occupied_start:
-                break
-            if resolved_start >= occupied_end:
-                continue
-            resolved_start = occupied_end
-
-        if (
-            resolved_start != candidate_start
-            and resolved_start + duration > horizon_end
-        ):
-            return None
-        return resolved_start
-
-    def _insert_merged_interval(
-        self,
-        *,
-        merged_intervals: list[tuple[datetime, datetime]],
-        interval: tuple[datetime, datetime],
-    ) -> None:
-        """Insert one interval into sorted merged intervals with local merge."""
-        interval_start_at, interval_end_at = interval
-        insert_index = 0
-        while (
-            insert_index < len(merged_intervals)
-            and merged_intervals[insert_index][1] < interval_start_at
-        ):
-            insert_index += 1
-
-        while (
-            insert_index < len(merged_intervals)
-            and merged_intervals[insert_index][0] <= interval_end_at
-        ):
-            existing_start_at, existing_end_at = merged_intervals.pop(insert_index)
-            interval_start_at = min(interval_start_at, existing_start_at)
-            interval_end_at = max(interval_end_at, existing_end_at)
-
-        merged_intervals.insert(insert_index, (interval_start_at, interval_end_at))
-
-    def _intervals_overlap(
-        self,
-        *,
-        first_start: datetime,
-        first_end: datetime,
-        second_start: datetime,
-        second_end: datetime,
-    ) -> bool:
-        """Return True when two intervals overlap."""
-        return first_start < second_end and second_start < first_end
 
     def _resolve_skill_id(self, skill_id: int | None) -> int:
         """Resolve a valid skill id while keeping skill optional for workflow."""
