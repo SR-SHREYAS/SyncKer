@@ -70,10 +70,14 @@ class SchedulerEngine:
             )
         elif slot_reason == SLOT_REASON_NO_PARTICIPANTS:
             explanation = (
-                "No participants were provided; returned fallback at window start."
+                "No participants were provided; returned fallback starting at window start "
+                "and clamped to window bounds."
             )
         else:
-            explanation = "No common slot found in the requested window; returned fallback at window start."
+            explanation = (
+                "No common slot found in the requested window; returned fallback starting "
+                "at window start and clamped to window bounds."
+            )
 
         score_multiplier = self.SCORE_MULTIPLIER_BY_SLOT_REASON.get(slot_reason, 1.0)
         final_score = round(score * score_multiplier, 2)

@@ -287,6 +287,21 @@ def _build_participant_free_intervals(
     )
 
 
+def _build_clamped_fallback_slot(
+    *,
+    window_start_at: datetime,
+    window_end_at: datetime,
+    minimum_duration: timedelta,
+) -> tuple[datetime, datetime]:
+    """Build a fallback slot from window start clamped to window bounds."""
+    fallback_start_at = window_start_at
+    fallback_end_at = max(
+        fallback_start_at,
+        min(fallback_start_at + minimum_duration, window_end_at),
+    )
+    return fallback_start_at, fallback_end_at
+
+
 def pick_first_common_slot(
     *,
     participant_user_ids: list[int],
@@ -303,10 +318,10 @@ def pick_first_common_slot(
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
 
     if not participant_user_ids:
-        fallback_start_at = window_start_at
-        fallback_end_at = max(
-            fallback_start_at,
-            min(fallback_start_at + minimum_duration, window_end_at),
+        fallback_start_at, fallback_end_at = _build_clamped_fallback_slot(
+            window_start_at=window_start_at,
+            window_end_at=window_end_at,
+            minimum_duration=minimum_duration,
         )
         return fallback_start_at, fallback_end_at, SLOT_REASON_NO_PARTICIPANTS
 
@@ -336,9 +351,9 @@ def pick_first_common_slot(
         if candidate_end_at <= interval_end_at:
             return interval_start_at, candidate_end_at, SLOT_REASON_FOUND
 
-    fallback_start_at = window_start_at
-    fallback_end_at = max(
-        fallback_start_at,
-        min(fallback_start_at + minimum_duration, window_end_at),
+    fallback_start_at, fallback_end_at = _build_clamped_fallback_slot(
+        window_start_at=window_start_at,
+        window_end_at=window_end_at,
+        minimum_duration=minimum_duration,
     )
     return fallback_start_at, fallback_end_at, SLOT_REASON_NO_OVERLAP
