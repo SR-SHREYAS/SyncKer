@@ -14,6 +14,7 @@ from app.repositories.task_repo import TaskRepository
 from app.services.team_service import TeamService
 from app.utils.logger import get_logger
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 logger = get_logger(__name__)
 
@@ -38,6 +39,7 @@ class SchedulingService:
         self.routine_repo = routine_repo
         self.skill_repo = skill_repo
         self.team_service = team_service
+        self.db_session = self._ensure_shared_db_session()
 
     def GenerateSchedulingSuggestion(
         self,
@@ -139,7 +141,7 @@ class SchedulingService:
         self, user_id: int, suggestion_id: int
     ) -> SessionSuggestion:
         """Apply one pending suggestion by writing collaboration tasks."""
-        with self.suggestion_repo.db.begin():
+        with self.db_session.begin():
             suggestion = self.suggestion_repo.get_suggestion_by_id_for_update(
                 suggestion_id
             )
@@ -215,6 +217,20 @@ class SchedulingService:
 
         logger.info("scheduling apply service completed")
         return suggestion
+
+    def _ensure_shared_db_session(self) -> Session:
+        """Ensure repos participating in one unit of work share one DB session."""
+        suggestion_db_session = getattr(self.suggestion_repo, "db", None)
+        task_db_session = getattr(self.task_repo, "db", None)
+        if suggestion_db_session is None or task_db_session is None:
+            raise RuntimeError(
+                "scheduling service requires repositories with db session access"
+            )
+        if suggestion_db_session is not task_db_session:
+            raise RuntimeError(
+                "scheduling service requires suggestion and task repositories to share one db session"
+            )
+        return suggestion_db_session
 
     def _resolve_skill_id(self, skill_id: int | None) -> int:
         """Resolve a valid skill id while keeping skill optional for workflow."""

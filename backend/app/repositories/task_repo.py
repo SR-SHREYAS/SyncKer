@@ -47,6 +47,10 @@ class TaskRepository:
             self.db.commit()
             self.db.refresh(task)
         else:
+            if self.db.in_transaction() is None:
+                raise RuntimeError(
+                    "task create with auto_commit=False requires an active transaction"
+                )
             self.db.flush()
         return task
 

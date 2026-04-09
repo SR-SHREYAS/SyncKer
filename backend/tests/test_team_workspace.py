@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from dataclasses import dataclass
 from types import SimpleNamespace
 
 import pytest
@@ -82,11 +83,11 @@ class _FakeTeamRepo:
 
 
 class _FakeSuggestionRepo:
-    def __init__(self) -> None:
+    def __init__(self, db: object) -> None:
         self.last_create_payload = None
         self._next_suggestion_id = 101
         self.suggestions_by_id: dict[int, SimpleNamespace] = {}
-        self.db = _FakeDbSession()
+        self.db = db
 
     def create_suggestion(self, **kwargs):
         self.last_create_payload = kwargs
@@ -110,6 +111,10 @@ class _FakeSuggestionRepo:
         return self.suggestions_by_id.get(suggestion_id)
 
     def update_suggestion(self, suggestion, *, auto_commit: bool = True, **updates):
+        if not auto_commit and not self.db.in_transaction():
+            raise RuntimeError(
+                "suggestion update with auto_commit=False requires an active transaction"
+            )
         for field_name, field_value in updates.items():
             setattr(suggestion, field_name, field_value)
         self.suggestions_by_id[suggestion.id] = suggestion
@@ -138,7 +143,8 @@ class _FakeEmptyRepo:
 
 
 class _FakeTaskRepo:
-    def __init__(self) -> None:
+    def __init__(self, db: object) -> None:
+        self.db = db
         self._next_task_id = 1
         self.tasks_by_user: dict[int, list[SimpleNamespace]] = {}
         self.created_tasks: list[SimpleNamespace] = []
@@ -161,6 +167,10 @@ class _FakeTaskRepo:
         skill_id: int | None,
         auto_commit: bool = True,
     ):
+        if not auto_commit and not self.db.in_transaction():
+            raise RuntimeError(
+                "task create with auto_commit=False requires an active transaction"
+            )
         created_task = SimpleNamespace(
             id=self._next_task_id,
             user_id=user_id,
@@ -183,16 +193,27 @@ class _FakeTaskRepo:
 
 
 class _FakeTransactionContext:
+    def __init__(self, db_session: "_FakeDbSession") -> None:
+        self.db_session = db_session
+
     def __enter__(self):
+        self.db_session.transaction_depth += 1
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        self.db_session.transaction_depth -= 1
         return False
 
 
 class _FakeDbSession:
+    def __init__(self) -> None:
+        self.transaction_depth = 0
+
     def begin(self):
-        return _FakeTransactionContext()
+        return _FakeTransactionContext(self)
+
+    def in_transaction(self) -> bool:
+        return self.transaction_depth > 0
 
 
 class _FakeSkillRepo:
@@ -251,7 +272,16 @@ def test_add_team_participant_maps_duplicate_membership_to_conflict_error() -> N
         )
 
 
-def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> None:
+@dataclass
+class _SchedulingScenario:
+    team: SimpleNamespace
+    team_service: TeamService
+    suggestion_repo: _FakeSuggestionRepo
+    task_repo: _FakeTaskRepo
+    scheduling_service: SchedulingService
+
+
+def _build_scheduling_scenario() -> _SchedulingScenario:
     team_repo = _FakeTeamRepo()
     user_repo = _FakeUserRepo()
     team_service = TeamService(team_repo, user_repo)
@@ -262,19 +292,68 @@ def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> No
         current_user_id=1, team_id=team.id, participant_user_id=2
     )
 
+    shared_db = _FakeDbSession()
+    suggestion_repo = _FakeSuggestionRepo(shared_db)
+    task_repo = _FakeTaskRepo(shared_db)
     scheduling_service = SchedulingService(
-        suggestion_repo=_FakeSuggestionRepo(),
+        suggestion_repo=suggestion_repo,
         scheduler_engine=_FakeSchedulerEngine(),
-        task_repo=_FakeTaskRepo(),
+        task_repo=task_repo,
         availability_repo=_FakeEmptyRepo(),
         routine_repo=_FakeEmptyRepo(),
         skill_repo=_FakeSkillRepo(),
         team_service=team_service,
     )
+    return _SchedulingScenario(
+        team=team,
+        team_service=team_service,
+        suggestion_repo=suggestion_repo,
+        task_repo=task_repo,
+        scheduling_service=scheduling_service,
+    )
+
+
+def _seed_suggestion(
+    scenario: _SchedulingScenario,
+    *,
+    suggestion_id: int,
+    status: SuggestionStatus,
+    generated_for_user_id: int = 1,
+    collaboration_title: str = "Sprint planning",
+    suggested_start_at: datetime | None = None,
+    suggested_end_at: datetime | None = None,
+) -> SimpleNamespace:
+    resolved_start_at = suggested_start_at or datetime.now(UTC).replace(
+        second=0, microsecond=0
+    )
+    resolved_end_at = suggested_end_at or (resolved_start_at + timedelta(minutes=45))
+    suggestion = SimpleNamespace(
+        id=suggestion_id,
+        team_id=scenario.team.id,
+        generated_for_user_id=generated_for_user_id,
+        mentor_user_id=1,
+        learner_user_id=2,
+        participant_user_ids=[1, 2],
+        collaboration_title=collaboration_title,
+        skill_id=10,
+        suggested_start_at=resolved_start_at,
+        suggested_end_at=resolved_end_at,
+        score=88.0,
+        status=status,
+        explanation="best overlap found",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    scenario.suggestion_repo.suggestions_by_id[suggestion_id] = suggestion
+    return suggestion
+
+
+def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> None:
+    scenario = _build_scheduling_scenario()
 
     with pytest.raises(ForbiddenError):
-        scheduling_service.GenerateSchedulingSuggestion(
-            team_id=team.id,
+        scenario.scheduling_service.GenerateSchedulingSuggestion(
+            team_id=scenario.team.id,
             generated_for_user_id=1,
             participant_user_ids=[1, 2, 3],
             collaboration_title="Sync meeting",
@@ -286,29 +365,10 @@ def test_generate_scheduling_suggestion_rejects_participant_outside_team() -> No
 
 
 def test_generate_scheduling_suggestion_saves_team_context() -> None:
-    team_repo = _FakeTeamRepo()
-    user_repo = _FakeUserRepo()
-    team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(
-        current_user_id=1, name="Core Team", description=None
-    )
-    team_service.AddTeamParticipant(
-        current_user_id=1, team_id=team.id, participant_user_id=2
-    )
+    scenario = _build_scheduling_scenario()
 
-    suggestion_repo = _FakeSuggestionRepo()
-    scheduling_service = SchedulingService(
-        suggestion_repo=suggestion_repo,
-        scheduler_engine=_FakeSchedulerEngine(),
-        task_repo=_FakeTaskRepo(),
-        availability_repo=_FakeEmptyRepo(),
-        routine_repo=_FakeEmptyRepo(),
-        skill_repo=_FakeSkillRepo(),
-        team_service=team_service,
-    )
-
-    suggestion = scheduling_service.GenerateSchedulingSuggestion(
-        team_id=team.id,
+    suggestion = scenario.scheduling_service.GenerateSchedulingSuggestion(
+        team_id=scenario.team.id,
         generated_for_user_id=1,
         participant_user_ids=[1, 2],
         collaboration_title="Sprint planning",
@@ -318,214 +378,97 @@ def test_generate_scheduling_suggestion_saves_team_context() -> None:
         minimum_duration_minutes=30,
     )
 
-    assert suggestion.team_id == team.id
-    assert suggestion_repo.last_create_payload["team_id"] == team.id
+    assert suggestion.team_id == scenario.team.id
+    assert scenario.suggestion_repo.last_create_payload["team_id"] == scenario.team.id
 
 
 def test_apply_scheduling_suggestion_creates_collaboration_tasks() -> None:
-    team_repo = _FakeTeamRepo()
-    user_repo = _FakeUserRepo()
-    team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(
-        current_user_id=1, name="Core Team", description=None
-    )
-    team_service.AddTeamParticipant(
-        current_user_id=1, team_id=team.id, participant_user_id=2
-    )
-
-    suggestion_repo = _FakeSuggestionRepo()
-    task_repo = _FakeTaskRepo()
-    scheduling_service = SchedulingService(
-        suggestion_repo=suggestion_repo,
-        scheduler_engine=_FakeSchedulerEngine(),
-        task_repo=task_repo,
-        availability_repo=_FakeEmptyRepo(),
-        routine_repo=_FakeEmptyRepo(),
-        skill_repo=_FakeSkillRepo(),
-        team_service=team_service,
-    )
-
-    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
-    suggested_end_at = suggested_start_at + timedelta(minutes=45)
-    suggestion_repo.suggestions_by_id[501] = SimpleNamespace(
-        id=501,
-        team_id=team.id,
-        generated_for_user_id=1,
-        mentor_user_id=1,
-        learner_user_id=2,
-        participant_user_ids=[1, 2],
-        collaboration_title="Sprint planning",
-        skill_id=10,
-        suggested_start_at=suggested_start_at,
-        suggested_end_at=suggested_end_at,
-        score=88.0,
-        status=SuggestionStatus.PENDING,
-        explanation="best overlap found",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-    )
-
-    applied_suggestion = scheduling_service.ApplySchedulingSuggestionToTimetable(
-        user_id=1,
+    scenario = _build_scheduling_scenario()
+    seeded_suggestion = _seed_suggestion(
+        scenario,
         suggestion_id=501,
+        status=SuggestionStatus.PENDING,
+    )
+
+    applied_suggestion = (
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
     )
 
     assert applied_suggestion.status == SuggestionStatus.ACCEPTED
-    assert len(task_repo.created_tasks) == 2
-    assert {task.user_id for task in task_repo.created_tasks} == {1, 2}
-    assert all(task.title == "Sprint planning" for task in task_repo.created_tasks)
+    assert len(scenario.task_repo.created_tasks) == 2
+    assert {task.user_id for task in scenario.task_repo.created_tasks} == {1, 2}
     assert all(
-        task.planned_start_at == suggested_start_at for task in task_repo.created_tasks
+        task.title == seeded_suggestion.collaboration_title
+        for task in scenario.task_repo.created_tasks
     )
     assert all(
-        task.planned_end_at == suggested_end_at for task in task_repo.created_tasks
+        task.planned_start_at == seeded_suggestion.suggested_start_at
+        for task in scenario.task_repo.created_tasks
     )
-    assert all(task.estimated_minutes == 45 for task in task_repo.created_tasks)
+    assert all(
+        task.planned_end_at == seeded_suggestion.suggested_end_at
+        for task in scenario.task_repo.created_tasks
+    )
+    assert all(
+        task.estimated_minutes == 45 for task in scenario.task_repo.created_tasks
+    )
 
 
 def test_apply_scheduling_suggestion_is_idempotent_for_accepted_status() -> None:
-    team_repo = _FakeTeamRepo()
-    user_repo = _FakeUserRepo()
-    team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(
-        current_user_id=1, name="Core Team", description=None
-    )
-    team_service.AddTeamParticipant(
-        current_user_id=1, team_id=team.id, participant_user_id=2
-    )
-
-    suggestion_repo = _FakeSuggestionRepo()
-    task_repo = _FakeTaskRepo()
-    scheduling_service = SchedulingService(
-        suggestion_repo=suggestion_repo,
-        scheduler_engine=_FakeSchedulerEngine(),
-        task_repo=task_repo,
-        availability_repo=_FakeEmptyRepo(),
-        routine_repo=_FakeEmptyRepo(),
-        skill_repo=_FakeSkillRepo(),
-        team_service=team_service,
-    )
-
-    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
-    suggestion_repo.suggestions_by_id[502] = SimpleNamespace(
-        id=502,
-        team_id=team.id,
-        generated_for_user_id=1,
-        mentor_user_id=1,
-        learner_user_id=2,
-        participant_user_ids=[1, 2],
-        collaboration_title="Daily sync",
-        skill_id=10,
-        suggested_start_at=suggested_start_at,
-        suggested_end_at=suggested_start_at + timedelta(minutes=30),
-        score=75.0,
-        status=SuggestionStatus.ACCEPTED,
-        explanation="already applied",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
-    )
-
-    applied_suggestion = scheduling_service.ApplySchedulingSuggestionToTimetable(
-        user_id=1,
+    scenario = _build_scheduling_scenario()
+    seeded_suggestion = _seed_suggestion(
+        scenario,
         suggestion_id=502,
+        status=SuggestionStatus.ACCEPTED,
+        collaboration_title="Daily sync",
+        suggested_end_at=datetime.now(UTC).replace(second=0, microsecond=0)
+        + timedelta(minutes=30),
+    )
+
+    applied_suggestion = (
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
     )
 
     assert applied_suggestion.status == SuggestionStatus.ACCEPTED
-    assert task_repo.created_tasks == []
+    assert scenario.task_repo.created_tasks == []
 
 
 def test_apply_scheduling_suggestion_rejects_non_owner_user() -> None:
-    team_repo = _FakeTeamRepo()
-    user_repo = _FakeUserRepo()
-    team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(
-        current_user_id=1, name="Core Team", description=None
-    )
-    team_service.AddTeamParticipant(
-        current_user_id=1, team_id=team.id, participant_user_id=2
-    )
-
-    suggestion_repo = _FakeSuggestionRepo()
-    task_repo = _FakeTaskRepo()
-    scheduling_service = SchedulingService(
-        suggestion_repo=suggestion_repo,
-        scheduler_engine=_FakeSchedulerEngine(),
-        task_repo=task_repo,
-        availability_repo=_FakeEmptyRepo(),
-        routine_repo=_FakeEmptyRepo(),
-        skill_repo=_FakeSkillRepo(),
-        team_service=team_service,
-    )
-
-    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
-    suggestion_repo.suggestions_by_id[503] = SimpleNamespace(
-        id=503,
-        team_id=team.id,
-        generated_for_user_id=1,
-        mentor_user_id=1,
-        learner_user_id=2,
-        participant_user_ids=[1, 2],
-        collaboration_title="Planning sync",
-        skill_id=10,
-        suggested_start_at=suggested_start_at,
-        suggested_end_at=suggested_start_at + timedelta(minutes=30),
-        score=81.0,
+    scenario = _build_scheduling_scenario()
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=503,
         status=SuggestionStatus.PENDING,
-        explanation="best overlap found",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
+        generated_for_user_id=1,
+        collaboration_title="Planning sync",
     )
 
     with pytest.raises(NotFoundError):
-        scheduling_service.ApplySchedulingSuggestionToTimetable(
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
             user_id=2,
-            suggestion_id=503,
+            suggestion_id=seeded_suggestion.id,
         )
 
 
 def test_apply_scheduling_suggestion_rejects_conflicting_timetable_slot() -> None:
-    team_repo = _FakeTeamRepo()
-    user_repo = _FakeUserRepo()
-    team_service = TeamService(team_repo, user_repo)
-    team = team_service.CreateTeamWorkspace(
-        current_user_id=1, name="Core Team", description=None
-    )
-    team_service.AddTeamParticipant(
-        current_user_id=1, team_id=team.id, participant_user_id=2
-    )
-
-    suggestion_repo = _FakeSuggestionRepo()
-    task_repo = _FakeTaskRepo()
-    scheduling_service = SchedulingService(
-        suggestion_repo=suggestion_repo,
-        scheduler_engine=_FakeSchedulerEngine(),
-        task_repo=task_repo,
-        availability_repo=_FakeEmptyRepo(),
-        routine_repo=_FakeEmptyRepo(),
-        skill_repo=_FakeSkillRepo(),
-        team_service=team_service,
-    )
-
+    scenario = _build_scheduling_scenario()
     suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
     suggested_end_at = suggested_start_at + timedelta(minutes=60)
-    suggestion_repo.suggestions_by_id[504] = SimpleNamespace(
-        id=504,
-        team_id=team.id,
-        generated_for_user_id=1,
-        mentor_user_id=1,
-        learner_user_id=2,
-        participant_user_ids=[1, 2],
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=504,
+        status=SuggestionStatus.PENDING,
         collaboration_title="Conflict test sync",
-        skill_id=10,
         suggested_start_at=suggested_start_at,
         suggested_end_at=suggested_end_at,
-        score=92.0,
-        status=SuggestionStatus.PENDING,
-        explanation="best overlap found",
-        created_at=datetime.now(UTC),
-        updated_at=datetime.now(UTC),
     )
-    task_repo.tasks_by_user[2] = [
+    scenario.task_repo.tasks_by_user[2] = [
         SimpleNamespace(
             id=1,
             user_id=2,
@@ -544,10 +487,13 @@ def test_apply_scheduling_suggestion_rejects_conflicting_timetable_slot() -> Non
     ]
 
     with pytest.raises(ConflictError):
-        scheduling_service.ApplySchedulingSuggestionToTimetable(
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
             user_id=1,
-            suggestion_id=504,
+            suggestion_id=seeded_suggestion.id,
         )
 
-    assert task_repo.created_tasks == []
-    assert suggestion_repo.suggestions_by_id[504].status == SuggestionStatus.PENDING
+    assert scenario.task_repo.created_tasks == []
+    assert (
+        scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
+        == SuggestionStatus.PENDING
+    )

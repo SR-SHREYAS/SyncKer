@@ -89,5 +89,9 @@ class SuggestionRepository:
             self.db.commit()
             self.db.refresh(suggestion)
         else:
+            if self.db.in_transaction() is None:
+                raise RuntimeError(
+                    "suggestion update with auto_commit=False requires an active transaction"
+                )
             self.db.flush()
         return suggestion
