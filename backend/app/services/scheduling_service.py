@@ -275,6 +275,7 @@ class SchedulingService:
 
             movable_tasks.append(participant_task)
 
+        movable_tasks.sort(key=lambda task: (task.planned_start_at, task.id))
         merged_intervals = self._merge_intervals(occupied_intervals)
         shift_horizon_end = suggested_end_at + timedelta(hours=self.SHIFT_HORIZON_HOURS)
         planned_updates: list[tuple[Task, datetime, datetime]] = []
@@ -321,10 +322,18 @@ class SchedulingService:
 
     def _is_protected_task(self, task: Task) -> bool:
         """Return True when task priority should not be shifted by scheduler."""
-        task_priority = self._normalize_task_priority(task.priority)
+        task_priority = self._normalize_task_priority(
+            task.priority,
+            task_id=task.id,
+        )
         return task_priority == TaskPriority.HIGH
 
-    def _normalize_task_priority(self, task_priority: object) -> TaskPriority | None:
+    def _normalize_task_priority(
+        self,
+        task_priority: TaskPriority | str | None,
+        *,
+        task_id: int | None = None,
+    ) -> TaskPriority | None:
         """Normalize enum or raw text priority into TaskPriority enum."""
         if isinstance(task_priority, TaskPriority):
             return task_priority
@@ -332,6 +341,20 @@ class SchedulingService:
             normalized_priority = task_priority.strip().lower()
             if normalized_priority in {"low", "medium", "high"}:
                 return TaskPriority(normalized_priority)
+            logger.warning(
+                "scheduling priority normalization received unknown text priority "
+                "task_id=%s priority=%s",
+                task_id,
+                task_priority,
+            )
+            return None
+        if task_priority is not None:
+            logger.warning(
+                "scheduling priority normalization received unsupported priority type "
+                "task_id=%s priority_type=%s",
+                task_id,
+                type(task_priority).__name__,
+            )
         return None
 
     def _merge_intervals(
