@@ -10,10 +10,15 @@ class SkillTaggedTask(Protocol):
     skill_id: int | None
 
 
-class ParticipantTimeBlock(Protocol):
-    """Minimal time-block shape used for availability/routine intersections."""
+class ParticipantOwnedRecord(Protocol):
+    """Minimal record shape scoped to one participant."""
 
     user_id: int | None
+
+
+class ParticipantTimeBlock(ParticipantOwnedRecord, Protocol):
+    """Minimal time-block shape used for availability/routine intersections."""
+
     is_recurring: bool
     day_of_week: int | None
     specific_date: date | None
@@ -21,9 +26,12 @@ class ParticipantTimeBlock(Protocol):
     end_time: time
 
 
-class ParticipantPlannedTask(SkillTaggedTask, Protocol):
+class ParticipantPlannedTask(
+    ParticipantOwnedRecord,
+    SkillTaggedTask,
+    Protocol,
+):
     """Minimal task shape used for participant busy interval extraction."""
 
-    user_id: int | None
     planned_start_at: datetime | None
     planned_end_at: datetime | None

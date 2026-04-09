@@ -3,12 +3,19 @@
 from datetime import datetime, timedelta
 from typing import Literal, Sequence
 
-from app.ai.contracts import ParticipantPlannedTask, ParticipantTimeBlock
+from app.ai.contracts import (
+    ParticipantOwnedRecord,
+    ParticipantPlannedTask,
+    ParticipantTimeBlock,
+)
 from app.ai.datetime_utils import normalize_datetime_to_utc
 from app.ai.time_windows import merge_intervals
 
 
-def _belongs_to_participant(record: object, participant_user_id: int) -> bool:
+def _belongs_to_participant(
+    record: ParticipantOwnedRecord,
+    participant_user_id: int,
+) -> bool:
     """Return True when a record belongs to one participant.
 
     If no user_id exists, treat the record as globally applicable.
@@ -44,12 +51,10 @@ def _build_time_block_intervals(
     window_end_at: datetime,
 ) -> list[tuple[datetime, datetime]]:
     """Expand recurring and one-off blocks to concrete datetime intervals."""
-    normalized_window_start_at = normalize_datetime_to_utc(window_start_at)
-    normalized_window_end_at = normalize_datetime_to_utc(window_end_at)
     concrete_intervals: list[tuple[datetime, datetime]] = []
-    current_date = normalized_window_start_at.date()
+    current_date = window_start_at.date()
 
-    while current_date <= normalized_window_end_at.date():
+    while current_date <= window_end_at.date():
         for block in blocks:
             if block.is_recurring:
                 if block.day_of_week != current_date.weekday():
@@ -60,12 +65,12 @@ def _build_time_block_intervals(
             block_start_at = datetime.combine(
                 current_date,
                 block.start_time,
-                tzinfo=normalized_window_start_at.tzinfo,
+                tzinfo=window_start_at.tzinfo,
             )
             block_end_at = datetime.combine(
                 current_date,
                 block.end_time,
-                tzinfo=normalized_window_start_at.tzinfo,
+                tzinfo=window_start_at.tzinfo,
             )
             if block_end_at <= block_start_at:
                 continue
@@ -73,8 +78,8 @@ def _build_time_block_intervals(
             clipped_interval = _clip_interval_to_window(
                 interval_start_at=block_start_at,
                 interval_end_at=block_end_at,
-                window_start_at=normalized_window_start_at,
-                window_end_at=normalized_window_end_at,
+                window_start_at=window_start_at,
+                window_end_at=window_end_at,
             )
             if clipped_interval is not None:
                 concrete_intervals.append(clipped_interval)
@@ -90,8 +95,6 @@ def _build_task_busy_intervals(
     window_end_at: datetime,
 ) -> list[tuple[datetime, datetime]]:
     """Build concrete busy ranges from planned tasks."""
-    normalized_window_start_at = normalize_datetime_to_utc(window_start_at)
-    normalized_window_end_at = normalize_datetime_to_utc(window_end_at)
     busy_intervals: list[tuple[datetime, datetime]] = []
     for task in tasks:
         task_start_at = task.planned_start_at
@@ -106,8 +109,8 @@ def _build_task_busy_intervals(
         clipped_interval = _clip_interval_to_window(
             interval_start_at=task_start_at,
             interval_end_at=task_end_at,
-            window_start_at=normalized_window_start_at,
-            window_end_at=normalized_window_end_at,
+            window_start_at=window_start_at,
+            window_end_at=window_end_at,
         )
         if clipped_interval is not None:
             busy_intervals.append(clipped_interval)
@@ -253,9 +256,15 @@ def pick_first_common_slot(
     routine_blocks: Sequence[ParticipantTimeBlock],
     tasks: Sequence[ParticipantPlannedTask],
 ) -> tuple[datetime, datetime, Literal["found", "no_overlap", "no_participants"]]:
-    """Return earliest common slot using participant free-window intersections."""
-    window_start_at = normalize_datetime_to_utc(window_start_at)
-    window_end_at = normalize_datetime_to_utc(window_end_at)
+    """Return earliest common slot using participant free-window intersections.
+
+    This function assumes window_start_at/window_end_at are already UTC-aware.
+    """
+    if __debug__:
+        assert (
+            window_start_at.tzinfo is not None
+        ), "window_start_at must be timezone-aware"
+        assert window_end_at.tzinfo is not None, "window_end_at must be timezone-aware"
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
 
     if not participant_user_ids:

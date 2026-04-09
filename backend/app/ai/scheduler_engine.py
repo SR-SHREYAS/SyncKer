@@ -67,6 +67,7 @@ class SchedulerEngine:
             "skill_id": skill_id,
             "suggested_start_at": suggested_start_at,
             "suggested_end_at": suggested_end_at,
+            "slot_reason": slot_reason,
             "score": score,
             "explanation": explanation,
         }
