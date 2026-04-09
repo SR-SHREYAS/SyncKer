@@ -107,6 +107,26 @@ class SchedulingHandler:
             logger.exception("scheduling update suggestion status handler failed")
             raise
 
+    def applySchedulingSuggestionToTimetable(
+        self, user_id: int, suggestion_id: int
+    ) -> SessionSuggestionResponse:
+        """Handle apply suggestion requests."""
+        try:
+            ensure_positive_id(user_id, field_name="user_id")
+            ensure_positive_id(suggestion_id, field_name="suggestion_id")
+            applied_suggestion = (
+                self.scheduling_service.ApplySchedulingSuggestionToTimetable(
+                    user_id,
+                    suggestion_id,
+                )
+            )
+            suggestion_response = self._build_suggestion_response(applied_suggestion)
+            logger.info("scheduling apply suggestion handler completed")
+            return suggestion_response
+        except AppError:
+            logger.exception("scheduling apply suggestion handler failed")
+            raise
+
     def _build_suggestion_response(
         self, suggestion: object
     ) -> SessionSuggestionResponse:

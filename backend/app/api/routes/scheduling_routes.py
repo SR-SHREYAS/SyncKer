@@ -85,3 +85,16 @@ def update_suggestion_status(
     return handler.updateSchedulingSuggestionStatus(
         current_user_id, suggestion_id, payload
     )
+
+
+@router.post(
+    "/suggestions/{suggestion_id}/apply",
+    response_model=SessionSuggestionResponse,
+)
+def apply_suggestion_to_timetable(
+    suggestion_id: int,
+    current_user_id: CurrentUserId,
+    handler: Annotated[SchedulingHandler, Depends(get_scheduling_handler)],
+) -> SessionSuggestionResponse:
+    """Apply one suggestion by writing collaboration blocks in timetables."""
+    return handler.applySchedulingSuggestionToTimetable(current_user_id, suggestion_id)

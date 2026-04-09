@@ -1,8 +1,8 @@
 """Scheduling business logic."""
 
 from app.ai.scheduler_engine import SchedulerEngine
-from app.core.exceptions import NotFoundError
-from app.models.enums import SuggestionStatus
+from app.core.exceptions import ConflictError, NotFoundError
+from app.models.enums import SuggestionStatus, TaskPriority, TaskStatus
 from app.models.session_suggestion import SessionSuggestion
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
@@ -47,7 +47,7 @@ class SchedulingService:
         skill_id: int | None,
         window_start_at: object,
         window_end_at: object,
-        minimum_duration_minutes: int
+        minimum_duration_minutes: int,
     ) -> SessionSuggestion:
         """Generate and save one planning-aware session suggestion."""
         self._ensure_participants_are_in_team(
@@ -103,7 +103,7 @@ class SchedulingService:
         *,
         team_id: int,
         generated_for_user_id: int,
-        participant_user_ids: list[int]
+        participant_user_ids: list[int],
     ) -> None:
         """Ensure scheduling request uses one real team and valid members."""
         self.team_service.AssertUserBelongsToTeam(
@@ -132,6 +132,99 @@ class SchedulingService:
         suggestion = self.suggestion_repo.update_suggestion(suggestion, status=status)
         logger.info("scheduling status update service completed")
         return suggestion
+
+    def ApplySchedulingSuggestionToTimetable(
+        self, user_id: int, suggestion_id: int
+    ) -> SessionSuggestion:
+        """Apply one pending suggestion by writing collaboration tasks."""
+        with self._get_shared_db_session().begin():
+            suggestion = self.suggestion_repo.get_suggestion_by_id_for_update(
+                suggestion_id
+            )
+            if suggestion is None or suggestion.generated_for_user_id != user_id:
+                logger.error("scheduling apply blocked: suggestion not found")
+                raise NotFoundError("suggestion not found")
+
+            if suggestion.status == SuggestionStatus.ACCEPTED:
+                logger.info("scheduling apply service completed")
+                return suggestion
+
+            if suggestion.status != SuggestionStatus.PENDING:
+                logger.error("scheduling apply blocked: suggestion is not pending")
+                raise ConflictError("only pending suggestions can be applied")
+
+            if suggestion.team_id is not None:
+                self._ensure_participants_are_in_team(
+                    team_id=suggestion.team_id,
+                    generated_for_user_id=user_id,
+                    participant_user_ids=suggestion.participant_user_ids,
+                )
+
+            for participant_user_id in suggestion.participant_user_ids:
+                has_conflict = self.task_repo.has_planned_overlap_for_user(
+                    user_id=participant_user_id,
+                    planned_start_at=suggestion.suggested_start_at,
+                    planned_end_at=suggestion.suggested_end_at,
+                    for_update=True,
+                )
+                if has_conflict:
+                    logger.error(
+                        "scheduling apply blocked: participant timetable conflict "
+                        "participant_user_id=%s start=%s end=%s",
+                        participant_user_id,
+                        suggestion.suggested_start_at,
+                        suggestion.suggested_end_at,
+                    )
+                    raise ConflictError(
+                        "cannot apply suggestion: one or more participant timetable slots conflict"
+                    )
+
+            collaboration_minutes = max(
+                int(
+                    (
+                        suggestion.suggested_end_at - suggestion.suggested_start_at
+                    ).total_seconds()
+                    // 60
+                ),
+                15,
+            )
+            for participant_user_id in suggestion.participant_user_ids:
+                self.task_repo.create_task(
+                    user_id=participant_user_id,
+                    title=suggestion.collaboration_title,
+                    description="Auto-created collaboration block from accepted suggestion.",
+                    priority=TaskPriority.HIGH,
+                    status=TaskStatus.PENDING,
+                    estimated_minutes=collaboration_minutes,
+                    deadline_at=None,
+                    planned_start_at=suggestion.suggested_start_at,
+                    planned_end_at=suggestion.suggested_end_at,
+                    skill_id=suggestion.skill_id,
+                    auto_commit=False,
+                )
+
+            suggestion = self.suggestion_repo.update_suggestion(
+                suggestion,
+                status=SuggestionStatus.ACCEPTED,
+                auto_commit=False,
+            )
+
+        logger.info("scheduling apply service completed")
+        return suggestion
+
+    def _get_shared_db_session(self):
+        """Return one shared DB session for repositories in this unit of work."""
+        suggestion_db_session = getattr(self.suggestion_repo, "db", None)
+        task_db_session = getattr(self.task_repo, "db", None)
+        if suggestion_db_session is None or task_db_session is None:
+            raise RuntimeError(
+                "scheduling service requires repositories with db session access"
+            )
+        if suggestion_db_session is not task_db_session:
+            raise RuntimeError(
+                "scheduling service requires suggestion and task repositories to share one db session"
+            )
+        return suggestion_db_session
 
     def _resolve_skill_id(self, skill_id: int | None) -> int:
         """Resolve a valid skill id while keeping skill optional for workflow."""

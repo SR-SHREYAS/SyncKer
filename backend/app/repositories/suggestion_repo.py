@@ -26,7 +26,7 @@ class SuggestionRepository:
         suggested_end_at: object,
         score: float,
         status: str,
-        explanation: str
+        explanation: str,
     ) -> SessionSuggestion:
         """Insert one generated session suggestion."""
         suggestion = SessionSuggestion(
@@ -53,6 +53,17 @@ class SuggestionRepository:
         stmt = select(SessionSuggestion).where(SessionSuggestion.id == suggestion_id)
         return self.db.execute(stmt).scalar_one_or_none()
 
+    def get_suggestion_by_id_for_update(
+        self, suggestion_id: int
+    ) -> SessionSuggestion | None:
+        """Fetch one suggestion by primary key and lock it for update."""
+        stmt = (
+            select(SessionSuggestion)
+            .where(SessionSuggestion.id == suggestion_id)
+            .with_for_update()
+        )
+        return self.db.execute(stmt).scalar_one_or_none()
+
     def list_suggestions_for_user(self, user_id: int) -> list[SessionSuggestion]:
         """Return suggestions generated for one user."""
         stmt = (
@@ -63,13 +74,29 @@ class SuggestionRepository:
         return list(self.db.execute(stmt).scalars().all())
 
     def update_suggestion(
-        self, suggestion: SessionSuggestion, **updates: object
+        self,
+        suggestion: SessionSuggestion,
+        *,
+        auto_commit: bool = True,
+        **updates: object,
     ) -> SessionSuggestion:
         """Apply field updates to an existing suggestion."""
+        if not auto_commit and not self._has_active_transaction():
+            raise RuntimeError(
+                "suggestion update with auto_commit=False requires an active transaction"
+            )
+
         for field, value in updates.items():
             setattr(suggestion, field, value)
 
         self.db.add(suggestion)
-        self.db.commit()
-        self.db.refresh(suggestion)
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(suggestion)
+        else:
+            self.db.flush()
         return suggestion
+
+    def _has_active_transaction(self) -> bool:
+        """Return True when Session currently has an active transaction."""
+        return bool(self.db.in_transaction())
