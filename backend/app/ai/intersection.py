@@ -1,12 +1,13 @@
 """Availability intersection logic."""
 
 from datetime import datetime, timedelta
-from typing import Literal, Sequence
+from typing import Sequence
 
 from app.ai.contracts import (
     ParticipantOwnedRecord,
     ParticipantPlannedTask,
     ParticipantTimeBlock,
+    SlotReason,
 )
 from app.ai.datetime_utils import normalize_datetime_to_utc
 from app.ai.time_windows import merge_intervals
@@ -248,7 +249,7 @@ def _build_participant_free_intervals(
         window_start_at=window_start_at,
         window_end_at=window_end_at,
     )
-    blocked_intervals = merge_intervals([*routine_busy_intervals, *task_busy_intervals])
+    blocked_intervals = [*routine_busy_intervals, *task_busy_intervals]
     return _subtract_intervals(
         available_intervals=available_intervals,
         blocked_intervals=blocked_intervals,
@@ -264,7 +265,7 @@ def pick_first_common_slot(
     availability_blocks: Sequence[ParticipantTimeBlock],
     routine_blocks: Sequence[ParticipantTimeBlock],
     tasks: Sequence[ParticipantPlannedTask],
-) -> tuple[datetime, datetime, Literal["found", "no_overlap", "no_participants"]]:
+) -> tuple[datetime, datetime, SlotReason]:
     """Return earliest common slot using participant free-window intersections."""
     window_start_at = normalize_datetime_to_utc(window_start_at)
     window_end_at = normalize_datetime_to_utc(window_end_at)
@@ -272,7 +273,10 @@ def pick_first_common_slot(
 
     if not participant_user_ids:
         fallback_start_at = window_start_at
-        fallback_end_at = window_start_at + minimum_duration
+        fallback_end_at = max(
+            fallback_start_at,
+            min(fallback_start_at + minimum_duration, window_end_at),
+        )
         return fallback_start_at, fallback_end_at, "no_participants"
 
     participant_free_intervals = [
@@ -302,5 +306,8 @@ def pick_first_common_slot(
             return interval_start_at, candidate_end_at, "found"
 
     fallback_start_at = window_start_at
-    fallback_end_at = window_start_at + minimum_duration
+    fallback_end_at = max(
+        fallback_start_at,
+        min(fallback_start_at + minimum_duration, window_end_at),
+    )
     return fallback_start_at, fallback_end_at, "no_overlap"

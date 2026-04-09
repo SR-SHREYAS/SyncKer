@@ -1,7 +1,9 @@
 """Lightweight type contracts for scheduler helper inputs."""
 
 from datetime import date, datetime, time
-from typing import Protocol
+from typing import Literal, Protocol, TypeAlias
+
+SlotReason: TypeAlias = Literal["found", "no_overlap", "no_participants"]
 
 
 class SkillTaggedTask(Protocol):

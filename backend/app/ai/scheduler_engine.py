@@ -4,7 +4,11 @@ from datetime import datetime
 from typing import Sequence
 
 from app.ai.constraints import resolve_window
-from app.ai.contracts import ParticipantPlannedTask, ParticipantTimeBlock
+from app.ai.contracts import (
+    ParticipantPlannedTask,
+    ParticipantTimeBlock,
+    SlotReason,
+)
 from app.ai.intersection import pick_first_common_slot
 from app.ai.scoring import score_candidate
 
@@ -12,7 +16,7 @@ from app.ai.scoring import score_candidate
 class SchedulerEngine:
     """Small rule-based engine for first-release suggestions."""
 
-    SCORE_MULTIPLIER_BY_SLOT_REASON = {
+    SCORE_MULTIPLIER_BY_SLOT_REASON: dict[SlotReason, float] = {
         "found": 1.0,
         "no_overlap": 0.5,
         "no_participants": 0.4,
@@ -68,7 +72,7 @@ class SchedulerEngine:
         else:
             explanation = "No common slot found in the requested window; returned fallback at window start."
 
-        score_multiplier = self.SCORE_MULTIPLIER_BY_SLOT_REASON[slot_reason]
+        score_multiplier = self.SCORE_MULTIPLIER_BY_SLOT_REASON.get(slot_reason, 1.0)
         final_score = round(score * score_multiplier, 2)
 
         return {

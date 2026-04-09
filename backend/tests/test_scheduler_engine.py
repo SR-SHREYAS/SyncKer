@@ -272,6 +272,27 @@ def test_scheduler_engine_falls_back_when_no_common_slot_exists() -> None:
     assert "fallback" in result["explanation"].lower()
 
 
+def test_scheduler_engine_clamps_no_overlap_fallback_to_window_end() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+    window_end_at = now + timedelta(minutes=10)
+
+    result = engine.generate(
+        participant_user_ids=[1, 2],
+        skill_id=10,
+        minimum_duration_minutes=30,
+        window_start_at=now,
+        window_end_at=window_end_at,
+        tasks=[],
+        availability_blocks=[],
+        routine_blocks=[],
+    )
+
+    assert result["suggested_start_at"] == now
+    assert result["suggested_end_at"] == window_end_at
+    assert result["slot_reason"] == "no_overlap"
+
+
 def test_scheduler_engine_respects_planned_tasks_for_common_slot() -> None:
     engine = SchedulerEngine()
     now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
@@ -345,3 +366,24 @@ def test_scheduler_engine_marks_empty_participants_as_distinct_fallback() -> Non
     assert result["slot_reason"] == "no_participants"
     assert result["score"] == 40.0
     assert "no participants" in result["explanation"].lower()
+
+
+def test_scheduler_engine_clamps_no_participants_fallback_to_window_end() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+    window_end_at = now + timedelta(minutes=10)
+
+    result = engine.generate(
+        participant_user_ids=[],
+        skill_id=10,
+        minimum_duration_minutes=30,
+        window_start_at=now,
+        window_end_at=window_end_at,
+        tasks=[],
+        availability_blocks=[],
+        routine_blocks=[],
+    )
+
+    assert result["suggested_start_at"] == now
+    assert result["suggested_end_at"] == window_end_at
+    assert result["slot_reason"] == "no_participants"
