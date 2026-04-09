@@ -1,9 +1,18 @@
 """Scheduling business logic."""
 
+from datetime import datetime, timedelta
+
 from app.ai.scheduler_engine import SchedulerEngine
+from app.ai.time_windows import (
+    find_next_available_start,
+    insert_merged_interval,
+    intervals_overlap,
+    merge_intervals,
+)
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.enums import SuggestionStatus, TaskPriority, TaskStatus
 from app.models.session_suggestion import SessionSuggestion
+from app.models.task import Task
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.skill_repo import SkillRepository
@@ -18,6 +27,8 @@ logger = get_logger(__name__)
 
 class SchedulingService:
     """Business rules for generating and managing suggestions."""
+
+    SHIFT_HORIZON_HOURS = 12
 
     def __init__(
         self,
@@ -56,7 +67,7 @@ class SchedulingService:
             participant_user_ids=participant_user_ids,
         )
         resolved_skill_id = self._resolve_skill_id(skill_id)
-        tasks: list[object] = []
+        tasks: list[Task] = []
         availability_blocks: list[object] = []
         routine_blocks: list[object] = []
         for participant_user_id in participant_user_ids:
@@ -161,22 +172,22 @@ class SchedulingService:
                 )
 
             for participant_user_id in suggestion.participant_user_ids:
-                has_conflict = self.task_repo.has_planned_overlap_for_user(
+                planned_tasks = self.task_repo.list_planned_tasks_by_user(
                     user_id=participant_user_id,
-                    planned_start_at=suggestion.suggested_start_at,
-                    planned_end_at=suggestion.suggested_end_at,
                     for_update=True,
                 )
-                if has_conflict:
-                    logger.error(
-                        "scheduling apply blocked: participant timetable conflict "
-                        "participant_user_id=%s start=%s end=%s",
-                        participant_user_id,
-                        suggestion.suggested_start_at,
-                        suggestion.suggested_end_at,
-                    )
-                    raise ConflictError(
-                        "cannot apply suggestion: one or more participant timetable slots conflict"
+                planned_task_updates = self._plan_shifted_tasks_for_suggestion(
+                    participant_user_id=participant_user_id,
+                    participant_tasks=planned_tasks,
+                    suggested_start_at=suggestion.suggested_start_at,
+                    suggested_end_at=suggestion.suggested_end_at,
+                )
+                for task, shifted_start_at, shifted_end_at in planned_task_updates:
+                    self.task_repo.update_task(
+                        task,
+                        planned_start_at=shifted_start_at,
+                        planned_end_at=shifted_end_at,
+                        auto_commit=False,
                     )
 
             collaboration_minutes = max(
@@ -225,6 +236,128 @@ class SchedulingService:
                 "scheduling service requires suggestion and task repositories to share one db session"
             )
         return suggestion_db_session
+
+    def _plan_shifted_tasks_for_suggestion(
+        self,
+        *,
+        participant_user_id: int,
+        participant_tasks: list[Task],
+        suggested_start_at: datetime,
+        suggested_end_at: datetime,
+    ) -> list[tuple[Task, datetime, datetime]]:
+        """Plan task shifts for one participant before inserting collaboration block."""
+        occupied_intervals = [(suggested_start_at, suggested_end_at)]
+        movable_tasks: list[Task] = []
+        for participant_task in participant_tasks:
+            planned_start_at = participant_task.planned_start_at
+            planned_end_at = participant_task.planned_end_at
+            if planned_start_at is None or planned_end_at is None:
+                continue
+            if planned_end_at <= planned_start_at:
+                continue
+
+            if self._is_protected_task(participant_task):
+                if intervals_overlap(
+                    first_start=suggested_start_at,
+                    first_end=suggested_end_at,
+                    second_start=planned_start_at,
+                    second_end=planned_end_at,
+                ):
+                    logger.error(
+                        "scheduling apply blocked: protected participant task overlaps "
+                        "participant_user_id=%s task_id=%s task_start=%s task_end=%s suggestion_start=%s suggestion_end=%s",
+                        participant_user_id,
+                        participant_task.id,
+                        planned_start_at,
+                        planned_end_at,
+                        suggested_start_at,
+                        suggested_end_at,
+                    )
+                    raise ConflictError(
+                        "cannot apply suggestion: protected tasks block requested slot"
+                    )
+                occupied_intervals.append((planned_start_at, planned_end_at))
+                continue
+
+            movable_tasks.append(participant_task)
+
+        movable_tasks.sort(key=lambda task: (task.planned_start_at, task.id))
+        merged_intervals = merge_intervals(occupied_intervals)
+        shift_horizon_end = suggested_end_at + timedelta(hours=self.SHIFT_HORIZON_HOURS)
+        planned_updates: list[tuple[Task, datetime, datetime]] = []
+        for movable_task in movable_tasks:
+            original_start_at = movable_task.planned_start_at
+            original_end_at = movable_task.planned_end_at
+            if original_start_at is None or original_end_at is None:
+                continue
+
+            task_duration = original_end_at - original_start_at
+            shifted_start_at = find_next_available_start(
+                candidate_start=original_start_at,
+                duration=task_duration,
+                occupied_intervals=merged_intervals,
+                horizon_end=shift_horizon_end,
+            )
+            if shifted_start_at is None:
+                logger.error(
+                    "scheduling apply blocked: no feasible shifted slot "
+                    "participant_user_id=%s task_id=%s task_start=%s task_end=%s suggestion_start=%s suggestion_end=%s horizon_end=%s",
+                    participant_user_id,
+                    movable_task.id,
+                    original_start_at,
+                    original_end_at,
+                    suggested_start_at,
+                    suggested_end_at,
+                    shift_horizon_end,
+                )
+                raise ConflictError(
+                    "cannot apply suggestion: no feasible slot after shifting lower-priority tasks"
+                )
+
+            shifted_end_at = shifted_start_at + task_duration
+            insert_merged_interval(
+                merged_intervals=merged_intervals,
+                interval=(shifted_start_at, shifted_end_at),
+            )
+            if (
+                shifted_start_at != original_start_at
+                or shifted_end_at != original_end_at
+            ):
+                planned_updates.append((movable_task, shifted_start_at, shifted_end_at))
+
+        return planned_updates
+
+    def _is_protected_task(self, task: Task) -> bool:
+        """Return True when task priority should not be shifted by scheduler."""
+        task_priority = self._normalize_task_priority(
+            task.priority,
+            task_id=task.id,
+        )
+        if task_priority is None:
+            logger.warning(
+                "scheduling defaulted unknown priority to protected task "
+                "task_id=%s raw_priority=%s",
+                task.id,
+                task.priority,
+            )
+            return True
+        return task_priority == TaskPriority.HIGH
+
+    def _normalize_task_priority(
+        self,
+        task_priority: TaskPriority | str | None,
+        *,
+        task_id: int | None = None,
+    ) -> TaskPriority | None:
+        """Normalize enum or raw text priority into TaskPriority enum."""
+        if isinstance(task_priority, TaskPriority):
+            return task_priority
+        if isinstance(task_priority, str):
+            normalized_priority = task_priority.strip().lower()
+            if normalized_priority in {"low", "medium", "high"}:
+                return TaskPriority(normalized_priority)
+            return None
+        return None
 
     def _resolve_skill_id(self, skill_id: int | None) -> int:
         """Resolve a valid skill id while keeping skill optional for workflow."""

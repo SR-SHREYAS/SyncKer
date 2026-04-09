@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from app.models.enums import SuggestionStatus
+from app.models.enums import SuggestionStatus, TaskPriority
 from app.services.scheduling_service import SchedulingService
 from app.services.team_service import TeamService
 
@@ -152,27 +152,20 @@ class _FakeTaskRepo:
     def list_tasks_by_user(self, user_id: int):
         return list(self.tasks_by_user.get(user_id, []))
 
-    def has_planned_overlap_for_user(
+    def list_planned_tasks_by_user(
         self,
         *,
         user_id: int,
-        planned_start_at: datetime,
-        planned_end_at: datetime,
         for_update: bool = False,
-    ) -> bool:
+    ) -> list[SimpleNamespace]:
         user_tasks = self.tasks_by_user.get(user_id, [])
-        for user_task in user_tasks:
-            existing_start_at = getattr(user_task, "planned_start_at", None)
-            existing_end_at = getattr(user_task, "planned_end_at", None)
-            if existing_start_at is None or existing_end_at is None:
-                continue
-            overlaps = (
-                planned_start_at < existing_end_at
-                and existing_start_at < planned_end_at
-            )
-            if overlaps:
-                return True
-        return False
+        planned_tasks = [
+            user_task
+            for user_task in user_tasks
+            if getattr(user_task, "planned_start_at", None) is not None
+            and getattr(user_task, "planned_end_at", None) is not None
+        ]
+        return sorted(planned_tasks, key=lambda item: (item.planned_start_at, item.id))
 
     def create_task(
         self,
@@ -212,6 +205,15 @@ class _FakeTaskRepo:
         self.created_tasks.append(created_task)
         self.tasks_by_user.setdefault(user_id, []).append(created_task)
         return created_task
+
+    def update_task(self, task: object, *, auto_commit: bool = True, **updates: object):
+        if not auto_commit and not self.db.in_transaction():
+            raise RuntimeError(
+                "task update with auto_commit=False requires an active transaction"
+            )
+        for field_name, field_value in updates.items():
+            setattr(task, field_name, field_value)
+        return task
 
 
 class _FakeTransactionContext:
@@ -439,6 +441,93 @@ def test_apply_scheduling_suggestion_creates_collaboration_tasks() -> None:
     )
 
 
+def test_apply_scheduling_suggestion_shifts_lower_priority_tasks() -> None:
+    scenario = _build_scheduling_scenario()
+    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
+    suggested_end_at = suggested_start_at + timedelta(minutes=60)
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=510,
+        status=SuggestionStatus.PENDING,
+        suggested_start_at=suggested_start_at,
+        suggested_end_at=suggested_end_at,
+    )
+    overlapping_task = SimpleNamespace(
+        id=90,
+        user_id=2,
+        title="Shift me",
+        description=None,
+        priority=TaskPriority.MEDIUM,
+        status="pending",
+        estimated_minutes=45,
+        deadline_at=None,
+        planned_start_at=suggested_start_at + timedelta(minutes=15),
+        planned_end_at=suggested_start_at + timedelta(minutes=60),
+        skill_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    scenario.task_repo.tasks_by_user[2] = [overlapping_task]
+
+    applied_suggestion = (
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
+    )
+
+    assert applied_suggestion.status == SuggestionStatus.ACCEPTED
+    assert overlapping_task.planned_start_at == suggested_end_at
+    assert overlapping_task.planned_end_at == suggested_end_at + timedelta(minutes=45)
+    assert len(scenario.task_repo.created_tasks) == 2
+
+
+def test_apply_scheduling_suggestion_rejects_non_overlapping_task_beyond_horizon() -> (
+    None
+):
+    scenario = _build_scheduling_scenario()
+    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
+    suggested_end_at = suggested_start_at + timedelta(minutes=60)
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=512,
+        status=SuggestionStatus.PENDING,
+        collaboration_title="Horizon-safe sync",
+        suggested_start_at=suggested_start_at,
+        suggested_end_at=suggested_end_at,
+    )
+    future_task = SimpleNamespace(
+        id=91,
+        user_id=2,
+        title="Future non-overlap task",
+        description=None,
+        priority=TaskPriority.MEDIUM,
+        status="pending",
+        estimated_minutes=45,
+        deadline_at=None,
+        planned_start_at=suggested_end_at + timedelta(hours=13),
+        planned_end_at=suggested_end_at + timedelta(hours=14),
+        skill_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    scenario.task_repo.tasks_by_user[2] = [future_task]
+
+    with pytest.raises(ConflictError):
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
+
+    assert scenario.task_repo.created_tasks == []
+    assert (
+        scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
+        == SuggestionStatus.PENDING
+    )
+    assert future_task.planned_start_at == suggested_end_at + timedelta(hours=13)
+    assert future_task.planned_end_at == suggested_end_at + timedelta(hours=14)
+
+
 def test_apply_scheduling_suggestion_is_idempotent_for_accepted_status() -> None:
     scenario = _build_scheduling_scenario()
     seeded_suggestion = _seed_suggestion(
@@ -478,7 +567,7 @@ def test_apply_scheduling_suggestion_rejects_non_owner_user() -> None:
         )
 
 
-def test_apply_scheduling_suggestion_rejects_conflicting_timetable_slot() -> None:
+def test_apply_scheduling_suggestion_rejects_protected_task_overlap() -> None:
     scenario = _build_scheduling_scenario()
     suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
     suggested_end_at = suggested_start_at + timedelta(minutes=60)
@@ -494,9 +583,9 @@ def test_apply_scheduling_suggestion_rejects_conflicting_timetable_slot() -> Non
         SimpleNamespace(
             id=1,
             user_id=2,
-            title="Existing task",
+            title="Protected task",
             description=None,
-            priority="medium",
+            priority=TaskPriority.HIGH,
             status="pending",
             estimated_minutes=30,
             deadline_at=None,
@@ -515,6 +604,131 @@ def test_apply_scheduling_suggestion_rejects_conflicting_timetable_slot() -> Non
         )
 
     assert scenario.task_repo.created_tasks == []
+    assert (
+        scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
+        == SuggestionStatus.PENDING
+    )
+
+
+def test_apply_scheduling_suggestion_rejects_unknown_priority_overlap() -> None:
+    scenario = _build_scheduling_scenario()
+    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
+    suggested_end_at = suggested_start_at + timedelta(minutes=60)
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=505,
+        status=SuggestionStatus.PENDING,
+        collaboration_title="Unknown priority conflict",
+        suggested_start_at=suggested_start_at,
+        suggested_end_at=suggested_end_at,
+    )
+    scenario.task_repo.tasks_by_user[2] = [
+        SimpleNamespace(
+            id=2,
+            user_id=2,
+            title="Unknown priority task",
+            description=None,
+            priority="urgent",
+            status="pending",
+            estimated_minutes=30,
+            deadline_at=None,
+            planned_start_at=suggested_start_at + timedelta(minutes=5),
+            planned_end_at=suggested_end_at + timedelta(minutes=5),
+            skill_id=None,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+    ]
+
+    with pytest.raises(ConflictError):
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
+
+    assert scenario.task_repo.created_tasks == []
+    assert (
+        scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
+        == SuggestionStatus.PENDING
+    )
+
+
+def test_apply_scheduling_suggestion_rejects_when_no_feasible_shift_exists() -> None:
+    scenario = _build_scheduling_scenario()
+    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
+    suggested_end_at = suggested_start_at + timedelta(minutes=60)
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=511,
+        status=SuggestionStatus.PENDING,
+        collaboration_title="No feasible shift",
+        suggested_start_at=suggested_start_at,
+        suggested_end_at=suggested_end_at,
+    )
+
+    first_task = SimpleNamespace(
+        id=1001,
+        user_id=2,
+        title="Movable task 1",
+        description=None,
+        priority=TaskPriority.MEDIUM,
+        status="pending",
+        estimated_minutes=30,
+        deadline_at=None,
+        planned_start_at=suggested_start_at,
+        planned_end_at=suggested_start_at + timedelta(hours=4, minutes=10),
+        skill_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    second_task = SimpleNamespace(
+        id=1002,
+        user_id=2,
+        title="Movable task 2",
+        description=None,
+        priority=TaskPriority.MEDIUM,
+        status="pending",
+        estimated_minutes=30,
+        deadline_at=None,
+        planned_start_at=first_task.planned_end_at,
+        planned_end_at=first_task.planned_end_at + timedelta(hours=4, minutes=10),
+        skill_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    third_task = SimpleNamespace(
+        id=1003,
+        user_id=2,
+        title="Movable task 3",
+        description=None,
+        priority=TaskPriority.MEDIUM,
+        status="pending",
+        estimated_minutes=30,
+        deadline_at=None,
+        planned_start_at=second_task.planned_end_at,
+        planned_end_at=second_task.planned_end_at + timedelta(hours=4, minutes=10),
+        skill_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    original_task_plans = {
+        first_task.id: (first_task.planned_start_at, first_task.planned_end_at),
+        second_task.id: (second_task.planned_start_at, second_task.planned_end_at),
+        third_task.id: (third_task.planned_start_at, third_task.planned_end_at),
+    }
+    scenario.task_repo.tasks_by_user[2] = [third_task, first_task, second_task]
+
+    with pytest.raises(ConflictError):
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
+
+    assert scenario.task_repo.created_tasks == []
+    for movable_task in (first_task, second_task, third_task):
+        original_start_at, original_end_at = original_task_plans[movable_task.id]
+        assert movable_task.planned_start_at == original_start_at
+        assert movable_task.planned_end_at == original_end_at
     assert (
         scenario.suggestion_repo.suggestions_by_id[seeded_suggestion.id].status
         == SuggestionStatus.PENDING
