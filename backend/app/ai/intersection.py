@@ -7,6 +7,9 @@ from app.ai.contracts import (
     ParticipantOwnedRecord,
     ParticipantPlannedTask,
     ParticipantTimeBlock,
+    SLOT_REASON_FOUND,
+    SLOT_REASON_NO_OVERLAP,
+    SLOT_REASON_NO_PARTICIPANTS,
     SlotReason,
 )
 from app.ai.datetime_utils import normalize_datetime_to_utc
@@ -77,17 +80,44 @@ def _build_time_block_intervals(
                 block.end_time,
                 tzinfo=window_start_at.tzinfo,
             )
-            if block_end_at <= block_start_at:
+            if block_end_at == block_start_at:
                 continue
 
-            clipped_interval = _clip_interval_to_window(
-                interval_start_at=block_start_at,
-                interval_end_at=block_end_at,
-                window_start_at=window_start_at,
-                window_end_at=window_end_at,
-            )
-            if clipped_interval is not None:
-                concrete_intervals.append(clipped_interval)
+            if block_end_at < block_start_at:
+                midnight_next_day = datetime.combine(
+                    current_date + timedelta(days=1),
+                    datetime.min.time(),
+                    tzinfo=window_start_at.tzinfo,
+                )
+                overnight_intervals = [
+                    (block_start_at, midnight_next_day),
+                    (
+                        midnight_next_day,
+                        datetime.combine(
+                            current_date + timedelta(days=1),
+                            block.end_time,
+                            tzinfo=window_start_at.tzinfo,
+                        ),
+                    ),
+                ]
+                for interval_start_at, interval_end_at in overnight_intervals:
+                    clipped_interval = _clip_interval_to_window(
+                        interval_start_at=interval_start_at,
+                        interval_end_at=interval_end_at,
+                        window_start_at=window_start_at,
+                        window_end_at=window_end_at,
+                    )
+                    if clipped_interval is not None:
+                        concrete_intervals.append(clipped_interval)
+            else:
+                clipped_interval = _clip_interval_to_window(
+                    interval_start_at=block_start_at,
+                    interval_end_at=block_end_at,
+                    window_start_at=window_start_at,
+                    window_end_at=window_end_at,
+                )
+                if clipped_interval is not None:
+                    concrete_intervals.append(clipped_interval)
         current_date += timedelta(days=1)
 
     return merge_intervals(concrete_intervals)
@@ -129,13 +159,14 @@ def _subtract_intervals(
     blocked_intervals: list[tuple[datetime, datetime]],
 ) -> list[tuple[datetime, datetime]]:
     """Subtract blocked intervals from available intervals."""
+    normalized_available_intervals = merge_intervals(available_intervals)
     normalized_blocked_intervals = merge_intervals(blocked_intervals)
     if __debug__:
-        _assert_canonical_intervals(available_intervals)
+        _assert_canonical_intervals(normalized_available_intervals)
         _assert_canonical_intervals(normalized_blocked_intervals)
 
     free_intervals: list[tuple[datetime, datetime]] = []
-    for available_start_at, available_end_at in available_intervals:
+    for available_start_at, available_end_at in normalized_available_intervals:
         cursor = available_start_at
         for blocked_start_at, blocked_end_at in normalized_blocked_intervals:
             if blocked_end_at <= cursor:
@@ -277,7 +308,7 @@ def pick_first_common_slot(
             fallback_start_at,
             min(fallback_start_at + minimum_duration, window_end_at),
         )
-        return fallback_start_at, fallback_end_at, "no_participants"
+        return fallback_start_at, fallback_end_at, SLOT_REASON_NO_PARTICIPANTS
 
     participant_free_intervals = [
         _build_participant_free_intervals(
@@ -303,11 +334,11 @@ def pick_first_common_slot(
     for interval_start_at, interval_end_at in common_intervals:
         candidate_end_at = interval_start_at + minimum_duration
         if candidate_end_at <= interval_end_at:
-            return interval_start_at, candidate_end_at, "found"
+            return interval_start_at, candidate_end_at, SLOT_REASON_FOUND
 
     fallback_start_at = window_start_at
     fallback_end_at = max(
         fallback_start_at,
         min(fallback_start_at + minimum_duration, window_end_at),
     )
-    return fallback_start_at, fallback_end_at, "no_overlap"
+    return fallback_start_at, fallback_end_at, SLOT_REASON_NO_OVERLAP

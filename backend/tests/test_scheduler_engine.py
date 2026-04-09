@@ -1,6 +1,11 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+from app.ai.contracts import (
+    SLOT_REASON_FOUND,
+    SLOT_REASON_NO_OVERLAP,
+    SLOT_REASON_NO_PARTICIPANTS,
+)
 from app.ai.scheduler_engine import SchedulerEngine
 
 
@@ -40,7 +45,7 @@ def test_scheduler_engine_returns_slot_inside_window() -> None:
 
     assert result["suggested_start_at"] >= now
     assert result["suggested_end_at"] > result["suggested_start_at"]
-    assert result["slot_reason"] == "found"
+    assert result["slot_reason"] == SLOT_REASON_FOUND
     assert result["score"] >= 10
 
 
@@ -140,7 +145,7 @@ def test_scheduler_engine_finds_true_common_slot_for_three_participants() -> Non
     expected_start = now + timedelta(hours=1, minutes=30)
     assert result["suggested_start_at"] == expected_start
     assert result["suggested_end_at"] == expected_start + timedelta(minutes=30)
-    assert result["slot_reason"] == "found"
+    assert result["slot_reason"] == SLOT_REASON_FOUND
 
 
 def test_scheduler_engine_applies_participant_routine_blocks_in_intersection() -> None:
@@ -197,7 +202,7 @@ def test_scheduler_engine_applies_participant_routine_blocks_in_intersection() -
     expected_start = now + timedelta(hours=1)
     assert result["suggested_start_at"] == expected_start
     assert result["suggested_end_at"] == expected_start + timedelta(hours=1)
-    assert result["slot_reason"] == "found"
+    assert result["slot_reason"] == SLOT_REASON_FOUND
 
 
 def test_scheduler_engine_treats_missing_availability_as_full_window() -> None:
@@ -229,7 +234,7 @@ def test_scheduler_engine_treats_missing_availability_as_full_window() -> None:
     expected_start = now + timedelta(hours=1)
     assert result["suggested_start_at"] == expected_start
     assert result["suggested_end_at"] == expected_start + timedelta(hours=1)
-    assert result["slot_reason"] == "found"
+    assert result["slot_reason"] == SLOT_REASON_FOUND
 
 
 def test_scheduler_engine_falls_back_when_no_common_slot_exists() -> None:
@@ -267,7 +272,7 @@ def test_scheduler_engine_falls_back_when_no_common_slot_exists() -> None:
 
     assert result["suggested_start_at"] == now
     assert result["suggested_end_at"] == now + timedelta(minutes=30)
-    assert result["slot_reason"] == "no_overlap"
+    assert result["slot_reason"] == SLOT_REASON_NO_OVERLAP
     assert result["score"] == 50.0
     assert "fallback" in result["explanation"].lower()
 
@@ -290,7 +295,7 @@ def test_scheduler_engine_clamps_no_overlap_fallback_to_window_end() -> None:
 
     assert result["suggested_start_at"] == now
     assert result["suggested_end_at"] == window_end_at
-    assert result["slot_reason"] == "no_overlap"
+    assert result["slot_reason"] == SLOT_REASON_NO_OVERLAP
 
 
 def test_scheduler_engine_respects_planned_tasks_for_common_slot() -> None:
@@ -343,7 +348,7 @@ def test_scheduler_engine_respects_planned_tasks_for_common_slot() -> None:
     expected_start = now + timedelta(minutes=90)
     assert result["suggested_start_at"] == expected_start
     assert result["suggested_end_at"] == expected_start + timedelta(minutes=30)
-    assert result["slot_reason"] == "found"
+    assert result["slot_reason"] == SLOT_REASON_FOUND
 
 
 def test_scheduler_engine_marks_empty_participants_as_distinct_fallback() -> None:
@@ -363,7 +368,7 @@ def test_scheduler_engine_marks_empty_participants_as_distinct_fallback() -> Non
 
     assert result["suggested_start_at"] == now
     assert result["suggested_end_at"] == now + timedelta(minutes=30)
-    assert result["slot_reason"] == "no_participants"
+    assert result["slot_reason"] == SLOT_REASON_NO_PARTICIPANTS
     assert result["score"] == 40.0
     assert "no participants" in result["explanation"].lower()
 
@@ -386,4 +391,45 @@ def test_scheduler_engine_clamps_no_participants_fallback_to_window_end() -> Non
 
     assert result["suggested_start_at"] == now
     assert result["suggested_end_at"] == window_end_at
-    assert result["slot_reason"] == "no_participants"
+    assert result["slot_reason"] == SLOT_REASON_NO_PARTICIPANTS
+
+
+def test_scheduler_engine_supports_overnight_availability_blocks() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=22, minute=0, second=0, microsecond=0)
+    overnight_start = (now + timedelta(hours=1)).time()
+    overnight_end = (now + timedelta(hours=3)).time()
+    availability = [
+        SimpleNamespace(
+            user_id=1,
+            day_of_week=now.weekday(),
+            start_time=overnight_start,
+            end_time=overnight_end,
+            is_recurring=True,
+            specific_date=None,
+        ),
+        SimpleNamespace(
+            user_id=2,
+            day_of_week=now.weekday(),
+            start_time=overnight_start,
+            end_time=overnight_end,
+            is_recurring=True,
+            specific_date=None,
+        ),
+    ]
+
+    result = engine.generate(
+        participant_user_ids=[1, 2],
+        skill_id=10,
+        minimum_duration_minutes=60,
+        window_start_at=now,
+        window_end_at=now + timedelta(hours=6),
+        tasks=[],
+        availability_blocks=availability,
+        routine_blocks=[],
+    )
+
+    expected_start = now + timedelta(hours=1)
+    assert result["suggested_start_at"] == expected_start
+    assert result["suggested_end_at"] == expected_start + timedelta(hours=1)
+    assert result["slot_reason"] == SLOT_REASON_FOUND

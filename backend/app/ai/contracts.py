@@ -3,7 +3,15 @@
 from datetime import date, datetime, time
 from typing import Literal, Protocol, TypeAlias
 
-SlotReason: TypeAlias = Literal["found", "no_overlap", "no_participants"]
+SLOT_REASON_FOUND = "found"
+SLOT_REASON_NO_OVERLAP = "no_overlap"
+SLOT_REASON_NO_PARTICIPANTS = "no_participants"
+
+SlotReason: TypeAlias = Literal[
+    "found",
+    "no_overlap",
+    "no_participants",
+]
 
 
 class SkillTaggedTask(Protocol):

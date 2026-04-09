@@ -7,6 +7,9 @@ from app.ai.constraints import resolve_window
 from app.ai.contracts import (
     ParticipantPlannedTask,
     ParticipantTimeBlock,
+    SLOT_REASON_FOUND,
+    SLOT_REASON_NO_OVERLAP,
+    SLOT_REASON_NO_PARTICIPANTS,
     SlotReason,
 )
 from app.ai.intersection import pick_first_common_slot
@@ -17,9 +20,9 @@ class SchedulerEngine:
     """Small rule-based engine for first-release suggestions."""
 
     SCORE_MULTIPLIER_BY_SLOT_REASON: dict[SlotReason, float] = {
-        "found": 1.0,
-        "no_overlap": 0.5,
-        "no_participants": 0.4,
+        SLOT_REASON_FOUND: 1.0,
+        SLOT_REASON_NO_OVERLAP: 0.5,
+        SLOT_REASON_NO_PARTICIPANTS: 0.4,
     }
 
     def generate(
@@ -60,12 +63,12 @@ class SchedulerEngine:
             related_tasks=related_tasks,
         )
 
-        if slot_reason == "found":
+        if slot_reason == SLOT_REASON_FOUND:
             explanation = (
                 "Suggested earliest common slot by intersecting participant availability "
                 "and subtracting routine and planned-task conflicts."
             )
-        elif slot_reason == "no_participants":
+        elif slot_reason == SLOT_REASON_NO_PARTICIPANTS:
             explanation = (
                 "No participants were provided; returned fallback at window start."
             )
