@@ -6,6 +6,7 @@ from app.ai.scheduler_engine import SchedulerEngine
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.enums import SuggestionStatus, TaskPriority, TaskStatus
 from app.models.session_suggestion import SessionSuggestion
+from app.models.task import Task
 from app.repositories.availability_repo import AvailabilityRepository
 from app.repositories.routine_repo import RoutineRepository
 from app.repositories.skill_repo import SkillRepository
@@ -60,7 +61,7 @@ class SchedulingService:
             participant_user_ids=participant_user_ids,
         )
         resolved_skill_id = self._resolve_skill_id(skill_id)
-        tasks: list[object] = []
+        tasks: list[Task] = []
         availability_blocks: list[object] = []
         routine_blocks: list[object] = []
         for participant_user_id in participant_user_ids:
@@ -234,16 +235,16 @@ class SchedulingService:
         self,
         *,
         participant_user_id: int,
-        participant_tasks: list[object],
+        participant_tasks: list[Task],
         suggested_start_at: datetime,
         suggested_end_at: datetime,
-    ) -> list[tuple[object, datetime, datetime]]:
+    ) -> list[tuple[Task, datetime, datetime]]:
         """Plan task shifts for one participant before inserting collaboration block."""
         occupied_intervals = [(suggested_start_at, suggested_end_at)]
-        movable_tasks: list[object] = []
+        movable_tasks: list[Task] = []
         for participant_task in participant_tasks:
-            planned_start_at = getattr(participant_task, "planned_start_at", None)
-            planned_end_at = getattr(participant_task, "planned_end_at", None)
+            planned_start_at = participant_task.planned_start_at
+            planned_end_at = participant_task.planned_end_at
             if planned_start_at is None or planned_end_at is None:
                 continue
             if planned_end_at <= planned_start_at:
@@ -258,8 +259,11 @@ class SchedulingService:
                 ):
                     logger.error(
                         "scheduling apply blocked: protected participant task overlaps "
-                        "participant_user_id=%s start=%s end=%s",
+                        "participant_user_id=%s task_id=%s task_start=%s task_end=%s suggestion_start=%s suggestion_end=%s",
                         participant_user_id,
+                        participant_task.id,
+                        planned_start_at,
+                        planned_end_at,
                         suggested_start_at,
                         suggested_end_at,
                     )
@@ -273,10 +277,10 @@ class SchedulingService:
 
         merged_intervals = self._merge_intervals(occupied_intervals)
         shift_horizon_end = suggested_end_at + timedelta(hours=self.SHIFT_HORIZON_HOURS)
-        planned_updates: list[tuple[object, datetime, datetime]] = []
+        planned_updates: list[tuple[Task, datetime, datetime]] = []
         for movable_task in movable_tasks:
-            original_start_at = getattr(movable_task, "planned_start_at", None)
-            original_end_at = getattr(movable_task, "planned_end_at", None)
+            original_start_at = movable_task.planned_start_at
+            original_end_at = movable_task.planned_end_at
             if original_start_at is None or original_end_at is None:
                 continue
 
@@ -290,10 +294,14 @@ class SchedulingService:
             if shifted_start_at is None:
                 logger.error(
                     "scheduling apply blocked: no feasible shifted slot "
-                    "participant_user_id=%s start=%s end=%s",
+                    "participant_user_id=%s task_id=%s task_start=%s task_end=%s suggestion_start=%s suggestion_end=%s horizon_end=%s",
                     participant_user_id,
+                    movable_task.id,
+                    original_start_at,
+                    original_end_at,
                     suggested_start_at,
                     suggested_end_at,
+                    shift_horizon_end,
                 )
                 raise ConflictError(
                     "cannot apply suggestion: no feasible slot after shifting lower-priority tasks"
@@ -311,9 +319,9 @@ class SchedulingService:
 
         return planned_updates
 
-    def _is_protected_task(self, task: object) -> bool:
+    def _is_protected_task(self, task: Task) -> bool:
         """Return True when task priority should not be shifted by scheduler."""
-        task_priority = self._normalize_task_priority(getattr(task, "priority", None))
+        task_priority = self._normalize_task_priority(task.priority)
         return task_priority == TaskPriority.HIGH
 
     def _normalize_task_priority(self, task_priority: object) -> TaskPriority | None:
@@ -364,7 +372,10 @@ class SchedulingService:
                 continue
             resolved_start = occupied_end
 
-        if resolved_start + duration > horizon_end:
+        if (
+            resolved_start != candidate_start
+            and resolved_start + duration > horizon_end
+        ):
             return None
         return resolved_start
 

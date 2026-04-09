@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.task import Task
@@ -86,27 +86,6 @@ class TaskRepository:
         if for_update:
             stmt = stmt.with_for_update()
         return list(self.db.execute(stmt).scalars().all())
-
-    def has_planned_overlap_for_user(
-        self,
-        *,
-        user_id: int,
-        planned_start_at: datetime,
-        planned_end_at: datetime,
-        for_update: bool = False,
-    ) -> bool:
-        """Return True when one planned task overlaps the requested time range."""
-        overlap_filter = and_(
-            Task.user_id == user_id,
-            Task.planned_start_at.is_not(None),
-            Task.planned_end_at.is_not(None),
-            Task.planned_start_at < planned_end_at,
-            planned_start_at < Task.planned_end_at,
-        )
-        stmt = select(Task.id).where(overlap_filter).limit(1)
-        if for_update:
-            stmt = stmt.with_for_update()
-        return self.db.execute(stmt).scalar_one_or_none() is not None
 
     def list_tasks_by_users(self, *, user_ids: list[int]) -> list[Task]:
         """Return all tasks owned by the given users in one query."""

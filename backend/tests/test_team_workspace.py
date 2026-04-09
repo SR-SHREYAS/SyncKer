@@ -482,6 +482,50 @@ def test_apply_scheduling_suggestion_shifts_lower_priority_tasks() -> None:
     assert len(scenario.task_repo.created_tasks) == 2
 
 
+def test_apply_scheduling_suggestion_keeps_non_overlapping_task_beyond_horizon() -> (
+    None
+):
+    scenario = _build_scheduling_scenario()
+    suggested_start_at = datetime.now(UTC).replace(second=0, microsecond=0)
+    suggested_end_at = suggested_start_at + timedelta(minutes=60)
+    seeded_suggestion = _seed_suggestion(
+        scenario,
+        suggestion_id=512,
+        status=SuggestionStatus.PENDING,
+        collaboration_title="Horizon-safe sync",
+        suggested_start_at=suggested_start_at,
+        suggested_end_at=suggested_end_at,
+    )
+    future_task = SimpleNamespace(
+        id=91,
+        user_id=2,
+        title="Future non-overlap task",
+        description=None,
+        priority=TaskPriority.MEDIUM,
+        status="pending",
+        estimated_minutes=45,
+        deadline_at=None,
+        planned_start_at=suggested_end_at + timedelta(hours=13),
+        planned_end_at=suggested_end_at + timedelta(hours=14),
+        skill_id=None,
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+    )
+    scenario.task_repo.tasks_by_user[2] = [future_task]
+
+    applied_suggestion = (
+        scenario.scheduling_service.ApplySchedulingSuggestionToTimetable(
+            user_id=1,
+            suggestion_id=seeded_suggestion.id,
+        )
+    )
+
+    assert applied_suggestion.status == SuggestionStatus.ACCEPTED
+    assert future_task.planned_start_at == suggested_end_at + timedelta(hours=13)
+    assert future_task.planned_end_at == suggested_end_at + timedelta(hours=14)
+    assert len(scenario.task_repo.created_tasks) == 2
+
+
 def test_apply_scheduling_suggestion_is_idempotent_for_accepted_status() -> None:
     scenario = _build_scheduling_scenario()
     seeded_suggestion = _seed_suggestion(
