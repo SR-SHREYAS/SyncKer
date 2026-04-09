@@ -67,6 +67,26 @@ class TaskRepository:
         )
         return list(self.db.execute(stmt).scalars().all())
 
+    def list_planned_tasks_by_user(
+        self,
+        *,
+        user_id: int,
+        for_update: bool = False,
+    ) -> list[Task]:
+        """Return tasks with planned slots ordered by planned start."""
+        stmt = (
+            select(Task)
+            .where(
+                Task.user_id == user_id,
+                Task.planned_start_at.is_not(None),
+                Task.planned_end_at.is_not(None),
+            )
+            .order_by(Task.planned_start_at.asc(), Task.id.asc())
+        )
+        if for_update:
+            stmt = stmt.with_for_update()
+        return list(self.db.execute(stmt).scalars().all())
+
     def has_planned_overlap_for_user(
         self,
         *,
@@ -100,14 +120,23 @@ class TaskRepository:
         )
         return list(self.db.execute(stmt).scalars().all())
 
-    def update_task(self, task: Task, **updates: object) -> Task:
+    def update_task(
+        self, task: Task, *, auto_commit: bool = True, **updates: object
+    ) -> Task:
         """Apply field updates to an existing task."""
+        if not auto_commit and not self._has_active_transaction():
+            raise RuntimeError(
+                "task update with auto_commit=False requires an active transaction"
+            )
         for field, value in updates.items():
             setattr(task, field, value)
 
         self.db.add(task)
-        self.db.commit()
-        self.db.refresh(task)
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(task)
+        else:
+            self.db.flush()
         return task
 
     def delete_task(self, task: Task) -> None:

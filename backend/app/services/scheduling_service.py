@@ -1,5 +1,7 @@
 """Scheduling business logic."""
 
+from datetime import datetime, timedelta
+
 from app.ai.scheduler_engine import SchedulerEngine
 from app.core.exceptions import ConflictError, NotFoundError
 from app.models.enums import SuggestionStatus, TaskPriority, TaskStatus
@@ -18,6 +20,8 @@ logger = get_logger(__name__)
 
 class SchedulingService:
     """Business rules for generating and managing suggestions."""
+
+    SHIFT_HORIZON_HOURS = 12
 
     def __init__(
         self,
@@ -161,22 +165,22 @@ class SchedulingService:
                 )
 
             for participant_user_id in suggestion.participant_user_ids:
-                has_conflict = self.task_repo.has_planned_overlap_for_user(
+                planned_tasks = self.task_repo.list_planned_tasks_by_user(
                     user_id=participant_user_id,
-                    planned_start_at=suggestion.suggested_start_at,
-                    planned_end_at=suggestion.suggested_end_at,
                     for_update=True,
                 )
-                if has_conflict:
-                    logger.error(
-                        "scheduling apply blocked: participant timetable conflict "
-                        "participant_user_id=%s start=%s end=%s",
-                        participant_user_id,
-                        suggestion.suggested_start_at,
-                        suggestion.suggested_end_at,
-                    )
-                    raise ConflictError(
-                        "cannot apply suggestion: one or more participant timetable slots conflict"
+                planned_task_updates = self._plan_shifted_tasks_for_suggestion(
+                    participant_user_id=participant_user_id,
+                    participant_tasks=planned_tasks,
+                    suggested_start_at=suggestion.suggested_start_at,
+                    suggested_end_at=suggestion.suggested_end_at,
+                )
+                for task, shifted_start_at, shifted_end_at in planned_task_updates:
+                    self.task_repo.update_task(
+                        task,
+                        planned_start_at=shifted_start_at,
+                        planned_end_at=shifted_end_at,
+                        auto_commit=False,
                     )
 
             collaboration_minutes = max(
@@ -225,6 +229,155 @@ class SchedulingService:
                 "scheduling service requires suggestion and task repositories to share one db session"
             )
         return suggestion_db_session
+
+    def _plan_shifted_tasks_for_suggestion(
+        self,
+        *,
+        participant_user_id: int,
+        participant_tasks: list[object],
+        suggested_start_at: datetime,
+        suggested_end_at: datetime,
+    ) -> list[tuple[object, datetime, datetime]]:
+        """Plan task shifts for one participant before inserting collaboration block."""
+        occupied_intervals = [(suggested_start_at, suggested_end_at)]
+        movable_tasks: list[object] = []
+        for participant_task in participant_tasks:
+            planned_start_at = getattr(participant_task, "planned_start_at", None)
+            planned_end_at = getattr(participant_task, "planned_end_at", None)
+            if planned_start_at is None or planned_end_at is None:
+                continue
+            if planned_end_at <= planned_start_at:
+                continue
+
+            if self._is_protected_task(participant_task):
+                if self._intervals_overlap(
+                    first_start=suggested_start_at,
+                    first_end=suggested_end_at,
+                    second_start=planned_start_at,
+                    second_end=planned_end_at,
+                ):
+                    logger.error(
+                        "scheduling apply blocked: protected participant task overlaps "
+                        "participant_user_id=%s start=%s end=%s",
+                        participant_user_id,
+                        suggested_start_at,
+                        suggested_end_at,
+                    )
+                    raise ConflictError(
+                        "cannot apply suggestion: protected tasks block requested slot"
+                    )
+                occupied_intervals.append((planned_start_at, planned_end_at))
+                continue
+
+            movable_tasks.append(participant_task)
+
+        merged_intervals = self._merge_intervals(occupied_intervals)
+        shift_horizon_end = suggested_end_at + timedelta(hours=self.SHIFT_HORIZON_HOURS)
+        planned_updates: list[tuple[object, datetime, datetime]] = []
+        for movable_task in movable_tasks:
+            original_start_at = getattr(movable_task, "planned_start_at", None)
+            original_end_at = getattr(movable_task, "planned_end_at", None)
+            if original_start_at is None or original_end_at is None:
+                continue
+
+            task_duration = original_end_at - original_start_at
+            shifted_start_at = self._find_next_available_start(
+                candidate_start=original_start_at,
+                duration=task_duration,
+                occupied_intervals=merged_intervals,
+                horizon_end=shift_horizon_end,
+            )
+            if shifted_start_at is None:
+                logger.error(
+                    "scheduling apply blocked: no feasible shifted slot "
+                    "participant_user_id=%s start=%s end=%s",
+                    participant_user_id,
+                    suggested_start_at,
+                    suggested_end_at,
+                )
+                raise ConflictError(
+                    "cannot apply suggestion: no feasible slot after shifting lower-priority tasks"
+                )
+
+            shifted_end_at = shifted_start_at + task_duration
+            merged_intervals = self._merge_intervals(
+                [*merged_intervals, (shifted_start_at, shifted_end_at)]
+            )
+            if (
+                shifted_start_at != original_start_at
+                or shifted_end_at != original_end_at
+            ):
+                planned_updates.append((movable_task, shifted_start_at, shifted_end_at))
+
+        return planned_updates
+
+    def _is_protected_task(self, task: object) -> bool:
+        """Return True when task priority should not be shifted by scheduler."""
+        task_priority = self._normalize_task_priority(getattr(task, "priority", None))
+        return task_priority == TaskPriority.HIGH
+
+    def _normalize_task_priority(self, task_priority: object) -> TaskPriority | None:
+        """Normalize enum or raw text priority into TaskPriority enum."""
+        if isinstance(task_priority, TaskPriority):
+            return task_priority
+        if isinstance(task_priority, str):
+            normalized_priority = task_priority.strip().lower()
+            if normalized_priority in {"low", "medium", "high"}:
+                return TaskPriority(normalized_priority)
+        return None
+
+    def _merge_intervals(
+        self,
+        intervals: list[tuple[datetime, datetime]],
+    ) -> list[tuple[datetime, datetime]]:
+        """Merge overlapping intervals to simplify availability checks."""
+        if not intervals:
+            return []
+        sorted_intervals = sorted(intervals, key=lambda item: item[0])
+        merged_intervals: list[tuple[datetime, datetime]] = [sorted_intervals[0]]
+        for next_start_at, next_end_at in sorted_intervals[1:]:
+            current_start_at, current_end_at = merged_intervals[-1]
+            if next_start_at <= current_end_at:
+                merged_intervals[-1] = (
+                    current_start_at,
+                    max(current_end_at, next_end_at),
+                )
+            else:
+                merged_intervals.append((next_start_at, next_end_at))
+        return merged_intervals
+
+    def _find_next_available_start(
+        self,
+        *,
+        candidate_start: datetime,
+        duration: timedelta,
+        occupied_intervals: list[tuple[datetime, datetime]],
+        horizon_end: datetime,
+    ) -> datetime | None:
+        """Return earliest non-overlapping start >= candidate_start within horizon."""
+        resolved_start = candidate_start
+        for occupied_start, occupied_end in occupied_intervals:
+            resolved_end = resolved_start + duration
+            if resolved_end <= occupied_start:
+                break
+            if resolved_start >= occupied_end:
+                continue
+            resolved_start = occupied_end
+
+        if resolved_start + duration > horizon_end:
+            return None
+        return resolved_start
+
+    def _intervals_overlap(
+        self,
+        *,
+        first_start: datetime,
+        first_end: datetime,
+        second_start: datetime,
+        second_end: datetime,
+    ) -> bool:
+        """Return True when two intervals overlap."""
+        return first_start < second_end and second_start < first_end
 
     def _resolve_skill_id(self, skill_id: int | None) -> int:
         """Resolve a valid skill id while keeping skill optional for workflow."""
