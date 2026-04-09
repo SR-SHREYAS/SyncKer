@@ -224,3 +224,23 @@ def test_scheduler_engine_respects_planned_tasks_for_common_slot() -> None:
     expected_start = now + timedelta(minutes=90)
     assert result["suggested_start_at"] == expected_start
     assert result["suggested_end_at"] == expected_start + timedelta(minutes=30)
+
+
+def test_scheduler_engine_marks_empty_participants_as_distinct_fallback() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+
+    result = engine.generate(
+        participant_user_ids=[],
+        skill_id=10,
+        minimum_duration_minutes=30,
+        window_start_at=now,
+        window_end_at=now + timedelta(days=1),
+        tasks=[],
+        availability_blocks=[],
+        routine_blocks=[],
+    )
+
+    assert result["suggested_start_at"] == now
+    assert result["suggested_end_at"] == now + timedelta(minutes=30)
+    assert "no participants" in result["explanation"].lower()

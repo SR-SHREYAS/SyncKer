@@ -1,6 +1,7 @@
 """Availability intersection logic."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Literal, Sequence
 
 from app.ai.time_windows import merge_intervals
 
@@ -24,18 +25,10 @@ def _clip_interval_to_window(
     window_end_at: datetime,
 ) -> tuple[datetime, datetime] | None:
     """Clip one interval to the scheduling window."""
-    interval_start_at = _normalize_datetime_for_reference(
-        value=interval_start_at,
-        reference=window_start_at,
-    )
-    interval_end_at = _normalize_datetime_for_reference(
-        value=interval_end_at,
-        reference=window_start_at,
-    )
-    window_end_at = _normalize_datetime_for_reference(
-        value=window_end_at,
-        reference=window_start_at,
-    )
+    interval_start_at = _normalize_datetime_to_utc(interval_start_at)
+    interval_end_at = _normalize_datetime_to_utc(interval_end_at)
+    window_start_at = _normalize_datetime_to_utc(window_start_at)
+    window_end_at = _normalize_datetime_to_utc(window_end_at)
     clipped_start_at = max(interval_start_at, window_start_at)
     clipped_end_at = min(interval_end_at, window_end_at)
     if clipped_end_at <= clipped_start_at:
@@ -43,17 +36,14 @@ def _clip_interval_to_window(
     return clipped_start_at, clipped_end_at
 
 
-def _normalize_datetime_for_reference(
-    *,
-    value: datetime,
-    reference: datetime,
-) -> datetime:
-    """Align naive/aware datetime shape with reference datetime."""
-    if value.tzinfo is None and reference.tzinfo is not None:
-        return value.replace(tzinfo=reference.tzinfo)
-    if value.tzinfo is not None and reference.tzinfo is None:
-        return value.astimezone(UTC).replace(tzinfo=None)
-    return value
+def _normalize_datetime_to_utc(value: datetime) -> datetime:
+    """Normalize datetimes to UTC-aware for consistent comparisons.
+
+    Naive datetimes are treated as UTC by contract in this scheduler layer.
+    """
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def _build_time_block_intervals(
@@ -155,17 +145,22 @@ def _subtract_intervals(
 
 
 def _intersect_intervals(
-    left_intervals: list[tuple[datetime, datetime]],
-    right_intervals: list[tuple[datetime, datetime]],
+    left_intervals: Sequence[tuple[datetime, datetime]],
+    right_intervals: Sequence[tuple[datetime, datetime]],
 ) -> list[tuple[datetime, datetime]]:
-    """Return overlap of two sorted interval lists."""
+    """Return overlap of two interval lists after canonical normalization."""
+    normalized_left_intervals = merge_intervals(list(left_intervals))
+    normalized_right_intervals = merge_intervals(list(right_intervals))
+
     overlaps: list[tuple[datetime, datetime]] = []
     left_index = 0
     right_index = 0
 
-    while left_index < len(left_intervals) and right_index < len(right_intervals):
-        left_start_at, left_end_at = left_intervals[left_index]
-        right_start_at, right_end_at = right_intervals[right_index]
+    while left_index < len(normalized_left_intervals) and right_index < len(
+        normalized_right_intervals
+    ):
+        left_start_at, left_end_at = normalized_left_intervals[left_index]
+        right_start_at, right_end_at = normalized_right_intervals[right_index]
 
         overlap_start_at = max(left_start_at, right_start_at)
         overlap_end_at = min(left_end_at, right_end_at)
@@ -238,13 +233,16 @@ def pick_first_common_slot(
     availability_blocks: list[object],
     routine_blocks: list[object],
     tasks: list[object],
-) -> tuple[datetime, datetime, bool]:
+) -> tuple[datetime, datetime, Literal["found", "no_overlap", "no_participants"]]:
     """Return earliest common slot using participant free-window intersections."""
+    window_start_at = _normalize_datetime_to_utc(window_start_at)
+    window_end_at = _normalize_datetime_to_utc(window_end_at)
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
+
     if not participant_user_ids:
         fallback_start_at = window_start_at
         fallback_end_at = window_start_at + minimum_duration
-        return fallback_start_at, fallback_end_at, False
+        return fallback_start_at, fallback_end_at, "no_participants"
 
     participant_free_intervals = [
         _build_participant_free_intervals(
@@ -270,8 +268,8 @@ def pick_first_common_slot(
     for interval_start_at, interval_end_at in common_intervals:
         candidate_end_at = interval_start_at + minimum_duration
         if candidate_end_at <= interval_end_at:
-            return interval_start_at, candidate_end_at, True
+            return interval_start_at, candidate_end_at, "found"
 
     fallback_start_at = window_start_at
     fallback_end_at = window_start_at + minimum_duration
-    return fallback_start_at, fallback_end_at, False
+    return fallback_start_at, fallback_end_at, "no_overlap"
