@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
+import pytest
+
 from app.ai.contracts import (
     SLOT_REASON_FOUND,
     SLOT_REASON_NO_OVERLAP,
@@ -433,3 +435,20 @@ def test_scheduler_engine_supports_overnight_availability_blocks() -> None:
     assert result["suggested_start_at"] == expected_start
     assert result["suggested_end_at"] == expected_start + timedelta(hours=1)
     assert result["slot_reason"] == SLOT_REASON_FOUND
+
+
+def test_scheduler_engine_rejects_non_positive_minimum_duration() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+
+    with pytest.raises(ValueError):
+        engine.generate(
+            participant_user_ids=[1],
+            skill_id=10,
+            minimum_duration_minutes=0,
+            window_start_at=now,
+            window_end_at=now + timedelta(hours=1),
+            tasks=[],
+            availability_blocks=[],
+            routine_blocks=[],
+        )

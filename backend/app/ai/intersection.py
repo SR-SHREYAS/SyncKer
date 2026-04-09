@@ -313,6 +313,9 @@ def pick_first_common_slot(
     tasks: Sequence[ParticipantPlannedTask],
 ) -> tuple[datetime, datetime, SlotReason]:
     """Return earliest common slot using participant free-window intersections."""
+    if minimum_duration_minutes <= 0:
+        raise ValueError("minimum_duration_minutes must be greater than 0")
+
     window_start_at = normalize_datetime_to_utc(window_start_at)
     window_end_at = normalize_datetime_to_utc(window_end_at)
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
