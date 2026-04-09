@@ -18,9 +18,13 @@ def _belongs_to_participant(
 ) -> bool:
     """Return True when a record belongs to one participant.
 
-    If no user_id exists, treat the record as globally applicable.
+    `user_id=None` is treated as global scope by contract.
     """
-    record_user_id = getattr(record, "user_id", None)
+    record_user_id = record.user_id
+    if __debug__:
+        assert record_user_id is None or isinstance(
+            record_user_id, int
+        ), "record.user_id must be int or None"
     if record_user_id is None:
         return True
     return record_user_id == participant_user_id

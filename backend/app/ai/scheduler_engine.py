@@ -12,6 +12,12 @@ from app.ai.scoring import score_candidate
 class SchedulerEngine:
     """Small rule-based engine for first-release suggestions."""
 
+    SCORE_MULTIPLIER_BY_SLOT_REASON = {
+        "found": 1.0,
+        "no_overlap": 0.5,
+        "no_participants": 0.4,
+    }
+
     def generate(
         self,
         *,
@@ -62,12 +68,15 @@ class SchedulerEngine:
         else:
             explanation = "No common slot found in the requested window; returned fallback at window start."
 
+        score_multiplier = self.SCORE_MULTIPLIER_BY_SLOT_REASON[slot_reason]
+        final_score = round(score * score_multiplier, 2)
+
         return {
             "participant_user_ids": participant_user_ids,
             "skill_id": skill_id,
             "suggested_start_at": suggested_start_at,
             "suggested_end_at": suggested_end_at,
             "slot_reason": slot_reason,
-            "score": score,
+            "score": final_score,
             "explanation": explanation,
         }

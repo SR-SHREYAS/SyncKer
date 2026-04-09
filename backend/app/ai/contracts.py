@@ -11,7 +11,10 @@ class SkillTaggedTask(Protocol):
 
 
 class ParticipantOwnedRecord(Protocol):
-    """Minimal record shape scoped to one participant."""
+    """Minimal record shape scoped to one participant.
+
+    `user_id=None` is a reserved sentinel for globally applicable records.
+    """
 
     user_id: int | None
 
