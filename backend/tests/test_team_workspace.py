@@ -86,6 +86,7 @@ class _FakeSuggestionRepo:
         self.last_create_payload = None
         self._next_suggestion_id = 101
         self.suggestions_by_id: dict[int, SimpleNamespace] = {}
+        self.db = _FakeDbSession()
 
     def create_suggestion(self, **kwargs):
         self.last_create_payload = kwargs
@@ -105,7 +106,10 @@ class _FakeSuggestionRepo:
     def get_suggestion_by_id(self, suggestion_id: int):
         return self.suggestions_by_id.get(suggestion_id)
 
-    def update_suggestion(self, suggestion, **updates):
+    def get_suggestion_by_id_for_update(self, suggestion_id: int):
+        return self.suggestions_by_id.get(suggestion_id)
+
+    def update_suggestion(self, suggestion, *, auto_commit: bool = True, **updates):
         for field_name, field_value in updates.items():
             setattr(suggestion, field_name, field_value)
         self.suggestions_by_id[suggestion.id] = suggestion
@@ -154,7 +158,8 @@ class _FakeTaskRepo:
         deadline_at: datetime | None,
         planned_start_at: datetime | None,
         planned_end_at: datetime | None,
-        skill_id: int | None
+        skill_id: int | None,
+        auto_commit: bool = True,
     ):
         created_task = SimpleNamespace(
             id=self._next_task_id,
@@ -175,6 +180,19 @@ class _FakeTaskRepo:
         self.created_tasks.append(created_task)
         self.tasks_by_user.setdefault(user_id, []).append(created_task)
         return created_task
+
+
+class _FakeTransactionContext:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+
+class _FakeDbSession:
+    def begin(self):
+        return _FakeTransactionContext()
 
 
 class _FakeSkillRepo:

@@ -139,65 +139,80 @@ class SchedulingService:
         self, user_id: int, suggestion_id: int
     ) -> SessionSuggestion:
         """Apply one pending suggestion by writing collaboration tasks."""
-        suggestion = self.suggestion_repo.get_suggestion_by_id(suggestion_id)
-        if suggestion is None or suggestion.generated_for_user_id != user_id:
-            logger.error("scheduling apply blocked: suggestion not found")
-            raise NotFoundError("suggestion not found")
-
-        if suggestion.status == SuggestionStatus.ACCEPTED:
-            logger.info("scheduling apply service completed")
-            return suggestion
-
-        if suggestion.status != SuggestionStatus.PENDING:
-            logger.error("scheduling apply blocked: suggestion is not pending")
-            raise ConflictError("only pending suggestions can be applied")
-
-        if suggestion.team_id is not None:
-            self._ensure_participants_are_in_team(
-                team_id=suggestion.team_id,
-                generated_for_user_id=user_id,
-                participant_user_ids=suggestion.participant_user_ids,
+        with self.suggestion_repo.db.begin():
+            suggestion = self.suggestion_repo.get_suggestion_by_id_for_update(
+                suggestion_id
             )
+            if suggestion is None or suggestion.generated_for_user_id != user_id:
+                logger.error("scheduling apply blocked: suggestion not found")
+                raise NotFoundError("suggestion not found")
 
-        for participant_user_id in suggestion.participant_user_ids:
-            participant_tasks = self.task_repo.list_tasks_by_user(participant_user_id)
-            has_conflict = self._has_planned_time_conflict(
-                existing_tasks=participant_tasks,
-                planned_start_at=suggestion.suggested_start_at,
-                planned_end_at=suggestion.suggested_end_at,
-            )
-            if has_conflict:
-                logger.error("scheduling apply blocked: participant timetable conflict")
-                raise ConflictError(
-                    "cannot apply suggestion: one or more participant timetable slots conflict"
+            if suggestion.status == SuggestionStatus.ACCEPTED:
+                logger.info("scheduling apply service completed")
+                return suggestion
+
+            if suggestion.status != SuggestionStatus.PENDING:
+                logger.error("scheduling apply blocked: suggestion is not pending")
+                raise ConflictError("only pending suggestions can be applied")
+
+            if suggestion.team_id is not None:
+                self._ensure_participants_are_in_team(
+                    team_id=suggestion.team_id,
+                    generated_for_user_id=user_id,
+                    participant_user_ids=suggestion.participant_user_ids,
                 )
 
-        collaboration_minutes = max(
-            int(
-                (
-                    suggestion.suggested_end_at - suggestion.suggested_start_at
-                ).total_seconds()
-                // 60
-            ),
-            15,
-        )
-        for participant_user_id in suggestion.participant_user_ids:
-            self.task_repo.create_task(
-                user_id=participant_user_id,
-                title=suggestion.collaboration_title,
-                description="Auto-created collaboration block from accepted suggestion.",
-                priority=TaskPriority.HIGH,
-                status=TaskStatus.PENDING,
-                estimated_minutes=collaboration_minutes,
-                deadline_at=None,
-                planned_start_at=suggestion.suggested_start_at,
-                planned_end_at=suggestion.suggested_end_at,
-                skill_id=suggestion.skill_id,
+            for participant_user_id in suggestion.participant_user_ids:
+                participant_tasks = self.task_repo.list_tasks_by_user(
+                    participant_user_id
+                )
+                has_conflict = self._has_planned_time_conflict(
+                    existing_tasks=participant_tasks,
+                    planned_start_at=suggestion.suggested_start_at,
+                    planned_end_at=suggestion.suggested_end_at,
+                )
+                if has_conflict:
+                    logger.error(
+                        "scheduling apply blocked: participant timetable conflict "
+                        "participant_user_id=%s start=%s end=%s",
+                        participant_user_id,
+                        suggestion.suggested_start_at,
+                        suggestion.suggested_end_at,
+                    )
+                    raise ConflictError(
+                        "cannot apply suggestion: one or more participant timetable slots conflict"
+                    )
+
+            collaboration_minutes = max(
+                int(
+                    (
+                        suggestion.suggested_end_at - suggestion.suggested_start_at
+                    ).total_seconds()
+                    // 60
+                ),
+                15,
+            )
+            for participant_user_id in suggestion.participant_user_ids:
+                self.task_repo.create_task(
+                    user_id=participant_user_id,
+                    title=suggestion.collaboration_title,
+                    description="Auto-created collaboration block from accepted suggestion.",
+                    priority=TaskPriority.HIGH,
+                    status=TaskStatus.PENDING,
+                    estimated_minutes=collaboration_minutes,
+                    deadline_at=None,
+                    planned_start_at=suggestion.suggested_start_at,
+                    planned_end_at=suggestion.suggested_end_at,
+                    skill_id=suggestion.skill_id,
+                    auto_commit=False,
+                )
+
+            suggestion = self.suggestion_repo.update_suggestion(
+                suggestion,
+                status=SuggestionStatus.ACCEPTED,
+                auto_commit=False,
             )
 
-        suggestion = self.suggestion_repo.update_suggestion(
-            suggestion, status=SuggestionStatus.ACCEPTED
-        )
         logger.info("scheduling apply service completed")
         return suggestion
 

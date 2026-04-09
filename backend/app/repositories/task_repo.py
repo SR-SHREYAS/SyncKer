@@ -26,7 +26,8 @@ class TaskRepository:
         deadline_at: datetime | None,
         planned_start_at: datetime | None,
         planned_end_at: datetime | None,
-        skill_id: int | None
+        skill_id: int | None,
+        auto_commit: bool = True,
     ) -> Task:
         """Insert one task for a user."""
         task = Task(
@@ -42,8 +43,11 @@ class TaskRepository:
             skill_id=skill_id,
         )
         self.db.add(task)
-        self.db.commit()
-        self.db.refresh(task)
+        if auto_commit:
+            self.db.commit()
+            self.db.refresh(task)
+        else:
+            self.db.flush()
         return task
 
     def get_task_by_id(self, task_id: int) -> Task | None:
