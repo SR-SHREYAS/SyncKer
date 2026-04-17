@@ -44,7 +44,11 @@ class ParticipantPlannedTask(
     SkillTaggedTask,
     Protocol,
 ):
-    """Minimal task shape used for participant busy interval extraction."""
+    """Minimal task shape used for participant busy interval extraction.
+
+    `user_id=None` is treated as global scope in scheduler intersections, so
+    such tasks are considered busy for every participant.
+    """
 
     planned_start_at: datetime | None
     planned_end_at: datetime | None

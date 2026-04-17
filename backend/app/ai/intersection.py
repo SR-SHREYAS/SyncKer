@@ -247,7 +247,11 @@ def _build_participant_free_intervals(
     routine_blocks: Sequence[ParticipantTimeBlock],
     tasks: Sequence[ParticipantPlannedTask],
 ) -> list[tuple[datetime, datetime]]:
-    """Build one participant's free intervals in the window."""
+    """Build one participant's free intervals in the window.
+
+    By contract, records with `user_id=None` are treated as global. For tasks,
+    this means one unscoped planned task blocks all participants.
+    """
     participant_availability_blocks = [
         block
         for block in availability_blocks

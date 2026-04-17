@@ -1,5 +1,6 @@
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
@@ -7,6 +8,7 @@ from app.ai.contracts import (
     SLOT_REASON_FOUND,
     SLOT_REASON_NO_OVERLAP,
     SLOT_REASON_NO_PARTICIPANTS,
+    SlotReason,
 )
 from app.ai.intersection import pick_first_common_slot
 from app.ai.scheduler_engine import SchedulerEngine
@@ -467,4 +469,18 @@ def test_pick_first_common_slot_rejects_non_positive_window() -> None:
             availability_blocks=[],
             routine_blocks=[],
             tasks=[],
+        )
+
+
+def test_scheduler_engine_rejects_unknown_slot_reason_multiplier() -> None:
+    with pytest.raises(ValueError):
+        SchedulerEngine.get_score_multiplier_for_reason(
+            cast(SlotReason, "unexpected_reason")
+        )
+
+
+def test_scheduler_engine_rejects_unknown_slot_reason_explanation() -> None:
+    with pytest.raises(ValueError):
+        SchedulerEngine.get_explanation_for_reason(
+            cast(SlotReason, "unexpected_reason")
         )

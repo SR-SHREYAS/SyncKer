@@ -25,6 +25,39 @@ class SchedulerEngine:
         SLOT_REASON_NO_PARTICIPANTS: 0.4,
     }
 
+    @classmethod
+    def get_score_multiplier_for_reason(cls, slot_reason: SlotReason) -> float:
+        """Return score multiplier for a slot reason with exhaustive handling."""
+        try:
+            return cls.SCORE_MULTIPLIER_BY_SLOT_REASON[slot_reason]
+        except KeyError as exc:
+            raise ValueError(
+                f"Unhandled SlotReason in SchedulerEngine: {slot_reason!r}. "
+                "Update SCORE_MULTIPLIER_BY_SLOT_REASON."
+            ) from exc
+
+    @staticmethod
+    def get_explanation_for_reason(slot_reason: SlotReason) -> str:
+        """Return explanation text for a slot reason with exhaustive handling."""
+        if slot_reason == SLOT_REASON_FOUND:
+            return (
+                "Suggested earliest common slot by intersecting participant availability "
+                "and subtracting routine and planned-task conflicts."
+            )
+        if slot_reason == SLOT_REASON_NO_PARTICIPANTS:
+            return (
+                "No participants were provided; returned fallback starting at window start "
+                "and clamped to window bounds."
+            )
+        if slot_reason == SLOT_REASON_NO_OVERLAP:
+            return (
+                "No common slot found in the requested window; returned fallback starting "
+                "at window start and clamped to window bounds."
+            )
+        raise ValueError(
+            f"Unhandled SlotReason in SchedulerEngine explanations: {slot_reason!r}."
+        )
+
     def generate(
         self,
         *,
@@ -63,23 +96,8 @@ class SchedulerEngine:
             related_tasks=related_tasks,
         )
 
-        if slot_reason == SLOT_REASON_FOUND:
-            explanation = (
-                "Suggested earliest common slot by intersecting participant availability "
-                "and subtracting routine and planned-task conflicts."
-            )
-        elif slot_reason == SLOT_REASON_NO_PARTICIPANTS:
-            explanation = (
-                "No participants were provided; returned fallback starting at window start "
-                "and clamped to window bounds."
-            )
-        else:
-            explanation = (
-                "No common slot found in the requested window; returned fallback starting "
-                "at window start and clamped to window bounds."
-            )
-
-        score_multiplier = self.SCORE_MULTIPLIER_BY_SLOT_REASON.get(slot_reason, 1.0)
+        explanation = self.get_explanation_for_reason(slot_reason)
+        score_multiplier = self.get_score_multiplier_for_reason(slot_reason)
         final_score = round(score * score_multiplier, 2)
 
         return {
