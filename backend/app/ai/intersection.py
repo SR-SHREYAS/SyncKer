@@ -34,6 +34,19 @@ def _belongs_to_participant(
     return record_user_id == participant_user_id
 
 
+def _belongs_to_exact_participant(
+    record: ParticipantOwnedRecord,
+    participant_user_id: int,
+) -> bool:
+    """Return True only when record is scoped to this participant."""
+    record_user_id = record.user_id
+    if __debug__:
+        assert record_user_id is None or isinstance(
+            record_user_id, int
+        ), "record.user_id must be int or None"
+    return record_user_id == participant_user_id
+
+
 def _clip_interval_to_window(
     *,
     interval_start_at: datetime,
@@ -246,6 +259,7 @@ def _build_participant_free_intervals(
     availability_blocks: Sequence[ParticipantTimeBlock],
     routine_blocks: Sequence[ParticipantTimeBlock],
     tasks: Sequence[ParticipantPlannedTask],
+    global_task_busy_intervals: Sequence[tuple[datetime, datetime]],
 ) -> list[tuple[datetime, datetime]]:
     """Build one participant's free intervals in the window.
 
@@ -277,14 +291,20 @@ def _build_participant_free_intervals(
         window_end_at=window_end_at,
     )
     participant_tasks = [
-        task for task in tasks if _belongs_to_participant(task, participant_user_id)
+        task
+        for task in tasks
+        if _belongs_to_exact_participant(task, participant_user_id)
     ]
     task_busy_intervals = _build_task_busy_intervals(
         tasks=participant_tasks,
         window_start_at=window_start_at,
         window_end_at=window_end_at,
     )
-    blocked_intervals = [*routine_busy_intervals, *task_busy_intervals]
+    blocked_intervals = [
+        *routine_busy_intervals,
+        *global_task_busy_intervals,
+        *task_busy_intervals,
+    ]
     return _subtract_intervals(
         available_intervals=available_intervals,
         blocked_intervals=blocked_intervals,
@@ -316,12 +336,20 @@ def pick_first_common_slot(
     routine_blocks: Sequence[ParticipantTimeBlock],
     tasks: Sequence[ParticipantPlannedTask],
 ) -> tuple[datetime, datetime, SlotReason]:
-    """Return earliest common slot using participant free-window intersections."""
+    """Return earliest common slot using participant free-window intersections.
+
+    Caller must pass a UTC-normalized window (for example from `resolve_window`).
+    """
     if minimum_duration_minutes <= 0:
         raise ValueError("minimum_duration_minutes must be greater than 0")
 
-    window_start_at = normalize_datetime_to_utc(window_start_at)
-    window_end_at = normalize_datetime_to_utc(window_end_at)
+    if window_start_at.tzinfo is None or window_end_at.tzinfo is None:
+        raise ValueError("window_start_at and window_end_at must be UTC-aware")
+    if window_start_at.utcoffset() != timedelta(
+        0
+    ) or window_end_at.utcoffset() != timedelta(0):
+        raise ValueError("window_start_at and window_end_at must be UTC-normalized")
+
     if window_end_at <= window_start_at:
         raise ValueError("window_end_at must be greater than window_start_at")
 
@@ -335,6 +363,13 @@ def pick_first_common_slot(
         )
         return fallback_start_at, fallback_end_at, SLOT_REASON_NO_PARTICIPANTS
 
+    global_tasks = [task for task in tasks if task.user_id is None]
+    global_task_busy_intervals = _build_task_busy_intervals(
+        tasks=global_tasks,
+        window_start_at=window_start_at,
+        window_end_at=window_end_at,
+    )
+
     participant_free_intervals = [
         _build_participant_free_intervals(
             participant_user_id=participant_user_id,
@@ -343,6 +378,7 @@ def pick_first_common_slot(
             availability_blocks=availability_blocks,
             routine_blocks=routine_blocks,
             tasks=tasks,
+            global_task_busy_intervals=global_task_busy_intervals,
         )
         for participant_user_id in participant_user_ids
     ]

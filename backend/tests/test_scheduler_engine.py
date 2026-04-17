@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 from types import SimpleNamespace
 from typing import cast
 
@@ -479,6 +479,52 @@ def test_scheduler_engine_includes_overnight_spill_into_window_start_day() -> No
     assert result["slot_reason"] == SLOT_REASON_FOUND
 
 
+def test_scheduler_engine_global_task_blocks_all_participants() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+    availability = [
+        SimpleNamespace(
+            user_id=1,
+            day_of_week=now.weekday(),
+            start_time=now.time(),
+            end_time=(now + timedelta(hours=2)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+        SimpleNamespace(
+            user_id=2,
+            day_of_week=now.weekday(),
+            start_time=now.time(),
+            end_time=(now + timedelta(hours=2)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+    ]
+    tasks = [
+        SimpleNamespace(
+            user_id=None,
+            skill_id=10,
+            planned_start_at=now,
+            planned_end_at=now + timedelta(hours=1),
+        ),
+    ]
+
+    result = engine.generate(
+        participant_user_ids=[1, 2],
+        skill_id=10,
+        minimum_duration_minutes=30,
+        window_start_at=now,
+        window_end_at=now + timedelta(hours=2),
+        tasks=tasks,
+        availability_blocks=availability,
+        routine_blocks=[],
+    )
+
+    assert result["suggested_start_at"] == now + timedelta(hours=1)
+    assert result["suggested_end_at"] == now + timedelta(hours=1, minutes=30)
+    assert result["slot_reason"] == SLOT_REASON_FOUND
+
+
 def test_scheduler_engine_rejects_non_positive_minimum_duration() -> None:
     engine = SchedulerEngine()
     now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
@@ -504,6 +550,23 @@ def test_pick_first_common_slot_rejects_non_positive_window() -> None:
             participant_user_ids=[1],
             window_start_at=now,
             window_end_at=now,
+            minimum_duration_minutes=30,
+            availability_blocks=[],
+            routine_blocks=[],
+            tasks=[],
+        )
+
+
+def test_pick_first_common_slot_rejects_non_utc_window() -> None:
+    local_tz = timezone(timedelta(hours=5, minutes=30))
+    start_at = datetime(2026, 1, 1, 9, 0, tzinfo=local_tz)
+    end_at = start_at + timedelta(hours=1)
+
+    with pytest.raises(ValueError):
+        pick_first_common_slot(
+            participant_user_ids=[1],
+            window_start_at=start_at,
+            window_end_at=end_at,
             minimum_duration_minutes=30,
             availability_blocks=[],
             routine_blocks=[],
