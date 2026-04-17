@@ -60,7 +60,7 @@ def _build_time_block_intervals(
 ) -> list[tuple[datetime, datetime]]:
     """Expand recurring and one-off blocks to concrete datetime intervals."""
     concrete_intervals: list[tuple[datetime, datetime]] = []
-    current_date = window_start_at.date()
+    current_date = window_start_at.date() - timedelta(days=1)
 
     while current_date <= window_end_at.date():
         for block in blocks:
