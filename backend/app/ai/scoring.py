@@ -1,6 +1,9 @@
 """Scheduling score logic."""
 
 from datetime import datetime
+from typing import Sequence
+
+from app.ai.contracts import SkillTaggedTask
 
 
 def score_candidate(
@@ -8,7 +11,7 @@ def score_candidate(
     window_start_at: datetime,
     suggested_start_at: datetime,
     minimum_duration_minutes: int,
-    related_tasks: list[object]
+    related_tasks: Sequence[SkillTaggedTask],
 ) -> float:
     """Return a simple score for one generated slot.
 
