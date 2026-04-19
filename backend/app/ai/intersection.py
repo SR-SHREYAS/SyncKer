@@ -25,10 +25,8 @@ def _belongs_to_participant(
     `user_id=None` is treated as global scope by contract.
     """
     record_user_id = record.user_id
-    if __debug__:
-        assert record_user_id is None or isinstance(
-            record_user_id, int
-        ), "record.user_id must be int or None"
+    if record_user_id is not None and not isinstance(record_user_id, int):
+        raise TypeError("record.user_id must be int or None")
     if record_user_id is None:
         return True
     return record_user_id == participant_user_id
@@ -40,10 +38,8 @@ def _belongs_to_exact_participant(
 ) -> bool:
     """Return True only when record is scoped to this participant."""
     record_user_id = record.user_id
-    if __debug__:
-        assert record_user_id is None or isinstance(
-            record_user_id, int
-        ), "record.user_id must be int or None"
+    if record_user_id is not None and not isinstance(record_user_id, int):
+        raise TypeError("record.user_id must be int or None")
     return record_user_id == participant_user_id
 
 
@@ -73,6 +69,8 @@ def _build_time_block_intervals(
 ) -> list[tuple[datetime, datetime]]:
     """Expand recurring and one-off blocks to concrete datetime intervals."""
     concrete_intervals: list[tuple[datetime, datetime]] = []
+    # Start one day early so previous-day overnight blocks that spill past
+    # midnight into window_start_at are included and clipped correctly.
     current_date = window_start_at.date() - timedelta(days=1)
 
     while current_date <= window_end_at.date():
@@ -174,9 +172,8 @@ def _subtract_intervals(
     """Subtract blocked intervals from available intervals."""
     normalized_available_intervals = merge_intervals(available_intervals)
     normalized_blocked_intervals = merge_intervals(blocked_intervals)
-    if __debug__:
-        _assert_canonical_intervals(normalized_available_intervals)
-        _assert_canonical_intervals(normalized_blocked_intervals)
+    _assert_canonical_intervals(normalized_available_intervals)
+    _assert_canonical_intervals(normalized_blocked_intervals)
 
     free_intervals: list[tuple[datetime, datetime]] = []
     for available_start_at, available_end_at in normalized_available_intervals:
@@ -206,9 +203,8 @@ def _intersect_intervals(
 
     Inputs must be sorted and non-overlapping.
     """
-    if __debug__:
-        _assert_canonical_intervals(left_intervals)
-        _assert_canonical_intervals(right_intervals)
+    _assert_canonical_intervals(left_intervals)
+    _assert_canonical_intervals(right_intervals)
 
     overlaps: list[tuple[datetime, datetime]] = []
     left_index = 0
@@ -238,17 +234,32 @@ def _assert_canonical_intervals(
     previous_end_at: datetime | None = None
     previous_start_at: datetime | None = None
     for interval_start_at, interval_end_at in intervals:
-        assert interval_start_at < interval_end_at, "interval duration must be positive"
+        if interval_start_at >= interval_end_at:
+            raise ValueError("interval duration must be positive")
         if previous_start_at is not None:
-            assert (
-                interval_start_at >= previous_start_at
-            ), "intervals must be sorted by start"
+            if interval_start_at < previous_start_at:
+                raise ValueError("intervals must be sorted by start")
         if previous_end_at is not None:
-            assert (
-                interval_start_at >= previous_end_at
-            ), "intervals must be non-overlapping"
+            if interval_start_at < previous_end_at:
+                raise ValueError("intervals must be non-overlapping")
         previous_start_at = interval_start_at
         previous_end_at = interval_end_at
+
+
+def _deduplicate_participant_user_ids(
+    participant_user_ids: Sequence[int],
+) -> list[int]:
+    """Return participant ids in original order with duplicates removed."""
+    seen_user_ids: set[int] = set()
+    unique_participant_user_ids: list[int] = []
+    for participant_user_id in participant_user_ids:
+        if not isinstance(participant_user_id, int):
+            raise TypeError("participant_user_ids must contain integers")
+        if participant_user_id in seen_user_ids:
+            continue
+        seen_user_ids.add(participant_user_id)
+        unique_participant_user_ids.append(participant_user_id)
+    return unique_participant_user_ids
 
 
 def _build_participant_free_intervals(
@@ -328,7 +339,7 @@ def _build_clamped_fallback_slot(
 
 def pick_first_common_slot(
     *,
-    participant_user_ids: list[int],
+    participant_user_ids: Sequence[int],
     window_start_at: datetime,
     window_end_at: datetime,
     minimum_duration_minutes: int,
@@ -354,8 +365,11 @@ def pick_first_common_slot(
         raise ValueError("window_end_at must be greater than window_start_at")
 
     minimum_duration = timedelta(minutes=minimum_duration_minutes)
+    unique_participant_user_ids = _deduplicate_participant_user_ids(
+        participant_user_ids
+    )
 
-    if not participant_user_ids:
+    if not unique_participant_user_ids:
         fallback_start_at, fallback_end_at = _build_clamped_fallback_slot(
             window_start_at=window_start_at,
             window_end_at=window_end_at,
@@ -380,7 +394,7 @@ def pick_first_common_slot(
             tasks=tasks,
             global_task_busy_intervals=global_task_busy_intervals,
         )
-        for participant_user_id in participant_user_ids
+        for participant_user_id in unique_participant_user_ids
     ]
 
     common_intervals = participant_free_intervals[0]

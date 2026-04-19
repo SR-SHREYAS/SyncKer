@@ -356,6 +356,105 @@ def test_scheduler_engine_respects_planned_tasks_for_common_slot() -> None:
     assert result["slot_reason"] == SLOT_REASON_FOUND
 
 
+def test_scheduler_engine_deduplicates_participant_ids_for_slot_search() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+    availability = [
+        SimpleNamespace(
+            user_id=1,
+            day_of_week=now.weekday(),
+            start_time=(now + timedelta(hours=1)).time(),
+            end_time=(now + timedelta(hours=3)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+        SimpleNamespace(
+            user_id=2,
+            day_of_week=now.weekday(),
+            start_time=(now + timedelta(hours=1)).time(),
+            end_time=(now + timedelta(hours=3)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+    ]
+
+    result_with_duplicates = engine.generate(
+        participant_user_ids=[1, 1, 2],
+        skill_id=10,
+        minimum_duration_minutes=60,
+        window_start_at=now,
+        window_end_at=now + timedelta(days=1),
+        tasks=[],
+        availability_blocks=availability,
+        routine_blocks=[],
+    )
+    result_unique = engine.generate(
+        participant_user_ids=[1, 2],
+        skill_id=10,
+        minimum_duration_minutes=60,
+        window_start_at=now,
+        window_end_at=now + timedelta(days=1),
+        tasks=[],
+        availability_blocks=availability,
+        routine_blocks=[],
+    )
+
+    assert (
+        result_with_duplicates["suggested_start_at"]
+        == result_unique["suggested_start_at"]
+    )
+    assert (
+        result_with_duplicates["suggested_end_at"] == result_unique["suggested_end_at"]
+    )
+    assert result_with_duplicates["slot_reason"] == result_unique["slot_reason"]
+
+
+def test_scheduler_engine_blocks_with_unrelated_skill_tasks() -> None:
+    engine = SchedulerEngine()
+    now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
+    availability = [
+        SimpleNamespace(
+            user_id=1,
+            day_of_week=now.weekday(),
+            start_time=now.time(),
+            end_time=(now + timedelta(hours=2)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+        SimpleNamespace(
+            user_id=2,
+            day_of_week=now.weekday(),
+            start_time=now.time(),
+            end_time=(now + timedelta(hours=2)).time(),
+            is_recurring=True,
+            specific_date=None,
+        ),
+    ]
+    tasks = [
+        SimpleNamespace(
+            user_id=1,
+            skill_id=999,
+            planned_start_at=now,
+            planned_end_at=now + timedelta(hours=1),
+        ),
+    ]
+
+    result = engine.generate(
+        participant_user_ids=[1, 2],
+        skill_id=10,
+        minimum_duration_minutes=30,
+        window_start_at=now,
+        window_end_at=now + timedelta(hours=2),
+        tasks=tasks,
+        availability_blocks=availability,
+        routine_blocks=[],
+    )
+
+    assert result["suggested_start_at"] == now + timedelta(hours=1)
+    assert result["suggested_end_at"] == now + timedelta(hours=1, minutes=30)
+    assert result["slot_reason"] == SLOT_REASON_FOUND
+
+
 def test_scheduler_engine_marks_empty_participants_as_distinct_fallback() -> None:
     engine = SchedulerEngine()
     now = datetime.now(UTC).replace(hour=9, minute=0, second=0, microsecond=0)
