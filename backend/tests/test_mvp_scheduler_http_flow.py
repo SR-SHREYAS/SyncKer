@@ -52,7 +52,7 @@ def _wait_for_server(base_url: str, *, process: subprocess.Popen[str]) -> None:
             response = httpx.get(f"{base_url}/health", timeout=0.5)
             if response.status_code == 200:
                 return
-        except Exception:
+        except httpx.RequestError:
             pass
         time.sleep(0.2)
     raise RuntimeError("Uvicorn process did not become ready in time")
@@ -147,91 +147,166 @@ def _auth_headers(access_token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {access_token}"}
 
 
+def _register_auth_user(
+    client: httpx.Client,
+    *,
+    email: str,
+    username: str,
+) -> tuple[dict, int, dict[str, str]]:
+    """Register one user and return auth payload, user id, and auth headers."""
+    auth_payload = _register_user(
+        client,
+        email=email,
+        username=username,
+    )
+    user_id = auth_payload["user"]["id"]
+    auth_headers = _auth_headers(auth_payload["token"]["access_token"])
+    return auth_payload, user_id, auth_headers
+
+
+def _create_team_workspace(
+    client: httpx.Client,
+    *,
+    owner_headers: dict[str, str],
+    name: str,
+    description: str,
+) -> int:
+    """Create one team workspace and return its id."""
+    response = client.post(
+        "/teams",
+        headers=owner_headers,
+        json={
+            "name": name,
+            "description": description,
+        },
+    )
+    assert response.status_code == 201
+    return int(response.json()["id"])
+
+
+def _add_team_participant(
+    client: httpx.Client,
+    *,
+    owner_headers: dict[str, str],
+    team_id: int,
+    participant_user_id: int,
+) -> None:
+    """Add one participant user to a team workspace."""
+    response = client.post(
+        f"/teams/{team_id}/members",
+        headers=owner_headers,
+        json={"participant_user_id": participant_user_id},
+    )
+    assert response.status_code == 201
+
+
+def _create_planning_task(
+    client: httpx.Client,
+    *,
+    headers: dict[str, str],
+    title: str,
+    description: str,
+    planned_start_at: datetime,
+    planned_end_at: datetime,
+) -> None:
+    """Create one planning task for current user."""
+    response = client.post(
+        "/planning/tasks",
+        headers=headers,
+        json={
+            "title": title,
+            "description": description,
+            "priority": "medium",
+            "status": "pending",
+            "estimated_minutes": 45,
+            "deadline_at": None,
+            "planned_start_at": planned_start_at.isoformat(),
+            "planned_end_at": planned_end_at.isoformat(),
+            "skill_id": None,
+        },
+    )
+    assert response.status_code == 201
+
+
+def _generate_scheduling_suggestion(
+    client: httpx.Client,
+    *,
+    owner_headers: dict[str, str],
+    team_id: int,
+    participant_user_ids: list[int],
+    collaboration_title: str,
+    window_start_at: datetime,
+    window_end_at: datetime,
+) -> dict:
+    """Generate one scheduling suggestion and return response payload."""
+    response = client.post(
+        "/scheduling/suggestions/generate",
+        headers=owner_headers,
+        json={
+            "team_id": team_id,
+            "participant_user_ids": participant_user_ids,
+            "collaboration_title": collaboration_title,
+            "skill_id": None,
+            "window_start_at": window_start_at.isoformat(),
+            "window_end_at": window_end_at.isoformat(),
+            "minimum_duration_minutes": 30,
+        },
+    )
+    assert response.status_code == 201
+    return response.json()
+
+
 def test_mvp_scheduler_http_flow_end_to_end(api_client: httpx.Client) -> None:
     """Cover core HTTP flow from auth to applied suggestion and timetable read."""
-    owner_auth = _register_user(
+    owner_auth, owner_id, owner_headers = _register_auth_user(
         api_client,
         email="owner-http@example.com",
         username="owner_http",
     )
-    participant_auth = _register_user(
+    _, participant_id, participant_headers = _register_auth_user(
         api_client,
         email="participant-http@example.com",
         username="participant_http",
     )
-    owner_id = owner_auth["user"]["id"]
-    participant_id = participant_auth["user"]["id"]
-    owner_headers = _auth_headers(owner_auth["token"]["access_token"])
-    participant_headers = _auth_headers(participant_auth["token"]["access_token"])
-
-    create_team_response = api_client.post(
-        "/teams",
-        headers=owner_headers,
-        json={
-            "name": "HTTP Alpha Team",
-            "description": "MVP http smoke team",
-        },
+    created_team_id = _create_team_workspace(
+        api_client,
+        owner_headers=owner_headers,
+        name="HTTP Alpha Team",
+        description="MVP http smoke team",
     )
-    assert create_team_response.status_code == 201
-    created_team_id = create_team_response.json()["id"]
-
-    add_member_response = api_client.post(
-        f"/teams/{created_team_id}/members",
-        headers=owner_headers,
-        json={"participant_user_id": participant_id},
+    _add_team_participant(
+        api_client,
+        owner_headers=owner_headers,
+        team_id=created_team_id,
+        participant_user_id=participant_id,
     )
-    assert add_member_response.status_code == 201
 
     current_time = datetime.now(UTC).replace(second=0, microsecond=0)
-    create_owner_task_response = api_client.post(
-        "/planning/tasks",
+    _create_planning_task(
+        api_client,
         headers=owner_headers,
-        json={
-            "title": "Owner focus task",
-            "description": "Owner work",
-            "priority": "medium",
-            "status": "pending",
-            "estimated_minutes": 45,
-            "deadline_at": None,
-            "planned_start_at": (current_time + timedelta(minutes=30)).isoformat(),
-            "planned_end_at": (current_time + timedelta(minutes=90)).isoformat(),
-            "skill_id": None,
-        },
+        title="Owner focus task",
+        description="Owner work",
+        planned_start_at=current_time + timedelta(minutes=30),
+        planned_end_at=current_time + timedelta(minutes=90),
     )
-    assert create_owner_task_response.status_code == 201
-
-    create_participant_task_response = api_client.post(
-        "/planning/tasks",
+    _create_planning_task(
+        api_client,
         headers=participant_headers,
-        json={
-            "title": "Participant focus task",
-            "description": "Participant work",
-            "priority": "medium",
-            "status": "pending",
-            "estimated_minutes": 45,
-            "deadline_at": None,
-            "planned_start_at": (current_time + timedelta(minutes=20)).isoformat(),
-            "planned_end_at": (current_time + timedelta(minutes=80)).isoformat(),
-            "skill_id": None,
-        },
+        title="Participant focus task",
+        description="Participant work",
+        planned_start_at=current_time + timedelta(minutes=20),
+        planned_end_at=current_time + timedelta(minutes=80),
     )
-    assert create_participant_task_response.status_code == 201
-
-    generate_response = api_client.post(
-        "/scheduling/suggestions/generate",
-        headers=owner_headers,
-        json={
-            "team_id": created_team_id,
-            "participant_user_ids": [owner_id, participant_id],
-            "collaboration_title": "MVP collaboration block",
-            "skill_id": None,
-            "window_start_at": current_time.isoformat(),
-            "window_end_at": (current_time + timedelta(hours=4)).isoformat(),
-            "minimum_duration_minutes": 30,
-        },
+    generated_suggestion = _generate_scheduling_suggestion(
+        api_client,
+        owner_headers=owner_headers,
+        team_id=created_team_id,
+        participant_user_ids=[owner_id, participant_id],
+        collaboration_title="MVP collaboration block",
+        window_start_at=current_time,
+        window_end_at=current_time + timedelta(hours=4),
     )
-    assert generate_response.status_code == 201
-    generated_suggestion = generate_response.json()
     assert generated_suggestion["status"] == "pending"
 
     apply_response = api_client.post(
@@ -280,41 +355,33 @@ def test_http_invalid_token_is_rejected(api_client: httpx.Client) -> None:
 
 def test_http_team_timetable_rejects_non_member_user(api_client: httpx.Client) -> None:
     """Reject team timetable read for user outside team membership."""
-    owner_auth = _register_user(
+    _, _, owner_headers = _register_auth_user(
         api_client,
         email="team-owner-http@example.com",
         username="team_owner_http",
     )
-    member_auth = _register_user(
+    _, member_user_id, _ = _register_auth_user(
         api_client,
         email="team-member-http@example.com",
         username="team_member_http",
     )
-    outsider_auth = _register_user(
+    _, _, outsider_headers = _register_auth_user(
         api_client,
         email="team-outsider-http@example.com",
         username="team_outsider_http",
     )
-    owner_headers = _auth_headers(owner_auth["token"]["access_token"])
-    outsider_headers = _auth_headers(outsider_auth["token"]["access_token"])
-
-    create_team_response = api_client.post(
-        "/teams",
-        headers=owner_headers,
-        json={
-            "name": "Restricted Team HTTP",
-            "description": "Only members can read timetable",
-        },
+    created_team_id = _create_team_workspace(
+        api_client,
+        owner_headers=owner_headers,
+        name="Restricted Team HTTP",
+        description="Only members can read timetable",
     )
-    assert create_team_response.status_code == 201
-    created_team_id = create_team_response.json()["id"]
-
-    add_member_response = api_client.post(
-        f"/teams/{created_team_id}/members",
-        headers=owner_headers,
-        json={"participant_user_id": member_auth["user"]["id"]},
+    _add_team_participant(
+        api_client,
+        owner_headers=owner_headers,
+        team_id=created_team_id,
+        participant_user_id=member_user_id,
     )
-    assert add_member_response.status_code == 201
 
     outsider_timetable_response = api_client.get(
         f"/planning/teams/{created_team_id}/timetable",
@@ -330,54 +397,40 @@ def test_http_apply_suggestion_rejects_non_pending_status(
     api_client: httpx.Client,
 ) -> None:
     """Reject apply when suggestion status is already non-pending."""
-    owner_auth = _register_user(
+    _, owner_id, owner_headers = _register_auth_user(
         api_client,
         email="status-owner-http@example.com",
         username="status_owner_http",
     )
-    participant_auth = _register_user(
+    _, participant_id, _ = _register_auth_user(
         api_client,
         email="status-participant-http@example.com",
         username="status_participant_http",
     )
-    owner_id = owner_auth["user"]["id"]
-    participant_id = participant_auth["user"]["id"]
-    owner_headers = _auth_headers(owner_auth["token"]["access_token"])
-
-    create_team_response = api_client.post(
-        "/teams",
-        headers=owner_headers,
-        json={
-            "name": "Status Team HTTP",
-            "description": "Apply state validation team",
-        },
+    created_team_id = _create_team_workspace(
+        api_client,
+        owner_headers=owner_headers,
+        name="Status Team HTTP",
+        description="Apply state validation team",
     )
-    assert create_team_response.status_code == 201
-    created_team_id = create_team_response.json()["id"]
-
-    add_member_response = api_client.post(
-        f"/teams/{created_team_id}/members",
-        headers=owner_headers,
-        json={"participant_user_id": participant_id},
+    _add_team_participant(
+        api_client,
+        owner_headers=owner_headers,
+        team_id=created_team_id,
+        participant_user_id=participant_id,
     )
-    assert add_member_response.status_code == 201
 
     current_time = datetime.now(UTC).replace(second=0, microsecond=0)
-    generate_response = api_client.post(
-        "/scheduling/suggestions/generate",
-        headers=owner_headers,
-        json={
-            "team_id": created_team_id,
-            "participant_user_ids": [owner_id, participant_id],
-            "collaboration_title": "Reject then apply",
-            "skill_id": None,
-            "window_start_at": current_time.isoformat(),
-            "window_end_at": (current_time + timedelta(hours=2)).isoformat(),
-            "minimum_duration_minutes": 30,
-        },
+    generated_suggestion = _generate_scheduling_suggestion(
+        api_client,
+        owner_headers=owner_headers,
+        team_id=created_team_id,
+        participant_user_ids=[owner_id, participant_id],
+        collaboration_title="Reject then apply",
+        window_start_at=current_time,
+        window_end_at=current_time + timedelta(hours=2),
     )
-    assert generate_response.status_code == 201
-    generated_suggestion_id = generate_response.json()["id"]
+    generated_suggestion_id = generated_suggestion["id"]
 
     reject_response = api_client.patch(
         f"/scheduling/suggestions/{generated_suggestion_id}",
