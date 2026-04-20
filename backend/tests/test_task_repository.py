@@ -228,6 +228,4 @@ def test_create_task_persists_planned_timeslot_values(db_session: Session) -> No
     assert _as_utc_naive(fetched_task.planned_start_at) == _as_utc_naive(
         planned_start_at
     )
-    assert _as_utc_naive(fetched_task.planned_end_at) == _as_utc_naive(
-        planned_end_at
-    )
+    assert _as_utc_naive(fetched_task.planned_end_at) == _as_utc_naive(planned_end_at)
