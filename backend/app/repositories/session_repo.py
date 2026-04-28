@@ -1,6 +1,6 @@
 """Session persistence queries."""
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models.session import Session as SessionModel
@@ -22,7 +22,7 @@ class SessionRepository:
         scheduled_start_at: object,
         scheduled_end_at: object,
         status: str,
-        created_by_user_id: int
+        created_by_user_id: int,
     ) -> SessionModel:
         """Insert one scheduled session."""
         session = SessionModel(
@@ -58,13 +58,22 @@ class SessionRepository:
         return self.db.execute(stmt).unique().scalar_one_or_none()
 
     def list_sessions_for_user(self, user_id: int) -> list[SessionModel]:
-        """Return sessions created by one user."""
+        """Return sessions the user created or participates in."""
         stmt = (
             select(SessionModel)
-            .where(SessionModel.created_by_user_id == user_id)
+            .outerjoin(
+                SessionParticipant,
+                SessionParticipant.session_id == SessionModel.id,
+            )
+            .where(
+                or_(
+                    SessionModel.created_by_user_id == user_id,
+                    SessionParticipant.user_id == user_id,
+                )
+            )
             .order_by(SessionModel.created_at.desc())
         )
-        return list(self.db.execute(stmt).scalars().all())
+        return list(self.db.execute(stmt).unique().scalars().all())
 
     def update_session(self, session: SessionModel, **updates: object) -> SessionModel:
         """Apply field updates to an existing session."""
@@ -83,7 +92,7 @@ class SessionRepository:
         user_id: int,
         participant_role: str,
         response_status: str,
-        joined_at: object = None
+        joined_at: object = None,
     ) -> SessionParticipant:
         """Insert one participant for a session."""
         participant = SessionParticipant(
