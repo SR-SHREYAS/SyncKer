@@ -1,3 +1,5 @@
+.PHONY: fmt-check test-core test-http-smoke ci
+
 fmt-check:
 	python -m black --check app tests
 
