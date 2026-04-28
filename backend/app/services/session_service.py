@@ -87,4 +87,6 @@ class SessionService:
         """Return True when user owns the session or is one of its participants."""
         if session.created_by_user_id == user_id:
             return True
-        return any(participant.user_id == user_id for participant in session.participants)
+        return any(
+            participant.user_id == user_id for participant in session.participants
+        )
