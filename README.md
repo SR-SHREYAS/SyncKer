@@ -45,6 +45,7 @@ Minimal `.env` values:
 ```bash
 DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5433/syncskill
 JWT_SECRET_KEY=change-me-please-use-a-long-secret-key
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
 ## Suggested Commands
