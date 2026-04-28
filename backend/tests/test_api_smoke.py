@@ -1,3 +1,4 @@
+import pytest
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 
@@ -102,18 +103,19 @@ def test_settings_parse_blank_cors_origins_as_empty_list() -> None:
 
 
 def test_settings_reject_invalid_json_cors_origins() -> None:
-    try:
+    with pytest.raises(
+        ValidationError,
+        match="valid JSON array or comma-separated string",
+    ):
         Settings(_env_file=None, cors_allowed_origins='["http://localhost:5173"')
-    except ValidationError as exc:
-        assert "valid JSON array or comma-separated string" in str(exc)
-    else:
-        raise AssertionError("expected invalid JSON CORS config to fail validation")
 
 
 def test_settings_reject_non_list_json_cors_origins() -> None:
-    try:
-        Settings(_env_file=None, cors_allowed_origins='{"origin": "http://localhost:5173"}')
-    except ValidationError as exc:
-        assert "must decode to a list" in str(exc)
-    else:
-        raise AssertionError("expected non-list JSON CORS config to fail validation")
+    with pytest.raises(
+        ValidationError,
+        match="must decode to a list",
+    ):
+        Settings(
+            _env_file=None,
+            cors_allowed_origins='{"origin": "http://localhost:5173"}',
+        )

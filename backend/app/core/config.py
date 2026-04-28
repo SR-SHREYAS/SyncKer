@@ -2,7 +2,7 @@
 
 import json
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/syncskill"
     )
-    cors_allowed_origins: list[str] = []
+    cors_allowed_origins: list[str] = Field(default_factory=list)
     jwt_secret_key: str = "change-me-please-use-a-long-secret-key"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
