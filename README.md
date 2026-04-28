@@ -82,6 +82,7 @@ uvicorn app.main:app --reload --app-dir backend
 GitHub Actions workflow:
 
 - `.github/workflows/backend-ci.yml`
+- `backend/Makefile`
 
 This CI gate runs:
 
@@ -89,13 +90,20 @@ This CI gate runs:
 - `pytest -q --ignore=tests/test_mvp_scheduler_http_flow.py`
 - `pytest -q tests/test_mvp_scheduler_http_flow.py`
 
-Equivalent local commands:
+Shared local target:
 
 ```bash
 cd backend
-black --check app tests
-pytest -q --ignore=tests/test_mvp_scheduler_http_flow.py
-pytest -q tests/test_mvp_scheduler_http_flow.py
+make ci
+```
+
+Equivalent expanded commands:
+
+```bash
+cd backend
+make fmt-check
+make test-core
+make test-http-smoke
 ```
 
 ## Current API Areas
