@@ -1,5 +1,8 @@
 """Application configuration."""
 
+import json
+
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,9 +13,31 @@ class Settings(BaseSettings):
     database_url: str = (
         "postgresql+psycopg://postgres:postgres@localhost:5432/syncskill"
     )
+    cors_allowed_origins: list[str] = []
     jwt_secret_key: str = "change-me-please-use-a-long-secret-key"
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
+
+    @field_validator("cors_allowed_origins", mode="before")
+    @classmethod
+    def parse_cors_allowed_origins(cls, value: object) -> object:
+        """Accept empty, comma-separated, or JSON-list CORS origin values."""
+        if value is None:
+            return []
+
+        if isinstance(value, str):
+            normalized_value = value.strip()
+            if not normalized_value:
+                return []
+            if normalized_value.startswith("["):
+                return json.loads(normalized_value)
+            return [
+                origin.strip()
+                for origin in normalized_value.split(",")
+                if origin.strip()
+            ]
+
+        return value
 
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
