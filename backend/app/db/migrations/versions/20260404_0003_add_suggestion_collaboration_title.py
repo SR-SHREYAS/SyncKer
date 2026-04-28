@@ -19,10 +19,12 @@ def upgrade() -> None:
         "session_suggestions",
         sa.Column("collaboration_title", sa.String(length=180), nullable=True),
     )
-    op.execute("""
+    op.execute(
+        """
         UPDATE session_suggestions
         SET collaboration_title = 'Collaboration Session'
-        """)
+        """
+    )
     op.alter_column("session_suggestions", "collaboration_title", nullable=False)
 
 

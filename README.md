@@ -77,6 +77,35 @@ Start the API:
 uvicorn app.main:app --reload --app-dir backend
 ```
 
+## CI Test Gate
+
+GitHub Actions workflow:
+
+- `.github/workflows/backend-ci.yml`
+- `backend/Makefile`
+
+This CI gate runs:
+
+- `black --check app tests`
+- `pytest --ignore=tests/test_mvp_scheduler_http_flow.py`
+- `pytest tests/test_mvp_scheduler_http_flow.py`
+
+Shared local target:
+
+```bash
+cd backend
+make ci
+```
+
+Equivalent expanded commands:
+
+```bash
+cd backend
+make fmt-check
+make test-core
+make test-http-smoke
+```
+
 ## Current API Areas
 
 - `/auth`
