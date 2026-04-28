@@ -87,8 +87,8 @@ GitHub Actions workflow:
 This CI gate runs:
 
 - `black --check app tests`
-- `pytest -q --ignore=tests/test_mvp_scheduler_http_flow.py`
-- `pytest -q tests/test_mvp_scheduler_http_flow.py`
+- `pytest --ignore=tests/test_mvp_scheduler_http_flow.py`
+- `pytest tests/test_mvp_scheduler_http_flow.py`
 
 Shared local target:
 
