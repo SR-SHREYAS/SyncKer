@@ -67,16 +67,26 @@ class SessionService:
         return session
 
     def ListSessions(self, user_id: int) -> list[Session]:
-        """Return sessions created by the current user."""
+        """Return sessions the current user created or participates in."""
         sessions = self.session_repo.list_sessions_for_user(user_id)
         logger.info("session list service completed")
         return sessions
 
     def GetSessionById(self, user_id: int, session_id: int) -> Session:
-        """Return one owned session."""
+        """Return one session the current user created or participates in."""
         session = self.session_repo.get_session_by_id(session_id)
-        if session is None or session.created_by_user_id != user_id:
+        if session is None or not self._user_can_access_session(
+            user_id=user_id, session=session
+        ):
             logger.error("session get blocked: session not found")
             raise NotFoundError("session not found")
         logger.info("session get service completed")
         return session
+
+    def _user_can_access_session(self, *, user_id: int, session: Session) -> bool:
+        """Return True when user owns the session or is one of its participants."""
+        if session.created_by_user_id == user_id:
+            return True
+        return any(
+            participant.user_id == user_id for participant in session.participants
+        )
