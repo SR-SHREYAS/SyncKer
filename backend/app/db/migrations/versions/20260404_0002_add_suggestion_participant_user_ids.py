@@ -19,10 +19,12 @@ def upgrade() -> None:
         "session_suggestions",
         sa.Column("participant_user_ids", sa.JSON(), nullable=True),
     )
-    op.execute("""
+    op.execute(
+        """
         UPDATE session_suggestions
         SET participant_user_ids = json_build_array(mentor_user_id, learner_user_id)
-        """)
+        """
+    )
     op.alter_column("session_suggestions", "participant_user_ids", nullable=False)
 
 
