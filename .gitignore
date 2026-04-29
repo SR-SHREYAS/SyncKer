@@ -90,3 +90,4 @@ secret/
 # Tooling / local-only files
 # ------------------------------
 .codex
+.project-context.local.md
