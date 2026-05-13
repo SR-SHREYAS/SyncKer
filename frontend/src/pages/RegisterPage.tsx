@@ -1,17 +1,31 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../app/AuthContext";
+import { AuthStatusShell } from "../components/AuthStatusShell";
 import { Layout } from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { register, registerError } = useAuth();
+  const { isAuthenticated, isInitializing, register, registerError } = useAuth();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (isInitializing) {
+    return (
+      <AuthStatusShell
+        title="Checking your session"
+        description="We are making sure you are routed to the right workspace entry point."
+      />
+    );
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

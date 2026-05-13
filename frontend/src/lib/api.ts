@@ -14,6 +14,22 @@ type ErrorPayload = {
   [key: string]: unknown;
 };
 
+function buildApiErrorMessage({
+  statusCode,
+  errorPayload,
+}: {
+  statusCode: number;
+  errorPayload: ErrorPayload | null;
+}): string {
+  const baseMessage =
+    errorPayload?.detail ||
+    errorPayload?.message ||
+    "Request failed. Please try again.";
+
+  const codeSuffix = errorPayload?.code ? ` [${errorPayload.code}]` : "";
+  return `${baseMessage} (HTTP ${statusCode})${codeSuffix}`;
+}
+
 export class ApiError extends Error {
   statusCode: number;
   requestPath: string;
@@ -82,10 +98,10 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorPayload = (await tryReadJson(response)) as ErrorPayload | null;
-    const message =
-      errorPayload?.detail ||
-      errorPayload?.message ||
-      "Request failed. Please try again.";
+    const message = buildApiErrorMessage({
+      statusCode: response.status,
+      errorPayload,
+    });
 
     throw new ApiError(message, response.status, path, method, errorPayload);
   }
