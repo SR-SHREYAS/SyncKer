@@ -207,6 +207,12 @@ input {
   transform: translateY(-1px);
 }
 
+.primary-button:focus-visible,
+.secondary-button:focus-visible {
+  outline: 3px solid rgba(198, 132, 28, 0.45);
+  outline-offset: 3px;
+}
+
 .primary-button {
   background: #1f4e35;
   color: #fdf9ef;

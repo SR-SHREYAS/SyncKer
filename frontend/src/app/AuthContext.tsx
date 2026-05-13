@@ -18,6 +18,7 @@ type AuthContextValue = {
   currentUser: User | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
+  initError: string | null;
   loginError: string | null;
   registerError: string | null;
   login: (payload: LoginRequest) => Promise<void>;
@@ -42,6 +43,7 @@ function getErrorMessage(error: unknown): string {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
@@ -57,10 +59,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((user) => {
         startTransition(() => {
           setCurrentUser(user);
+          setInitError(null);
         });
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         clearStoredAccessToken();
+        console.error("Failed to initialize current user during auth bootstrap", error);
+
+        startTransition(() => {
+          setInitError(getErrorMessage(error));
+        });
       })
       .finally(() => {
         setIsInitializing(false);
@@ -76,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = await getCurrentUser();
 
       startTransition(() => {
+        setInitError(null);
         setCurrentUser(user);
       });
     } catch (error) {
@@ -94,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = await getCurrentUser();
 
       startTransition(() => {
+        setInitError(null);
         setCurrentUser(user);
       });
     } catch (error) {
@@ -108,6 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     startTransition(() => {
       setCurrentUser(null);
+      setInitError(null);
       setLoginError(null);
       setRegisterError(null);
     });
@@ -119,6 +130,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentUser,
         isAuthenticated: currentUser !== null,
         isInitializing,
+        initError,
         loginError,
         registerError,
         login,

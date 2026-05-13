@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useAuth } from "../app/AuthContext";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isInitializing } = useAuth();
+  const { initError, isAuthenticated, isInitializing } = useAuth();
 
   if (isInitializing) {
     return (
@@ -14,6 +14,20 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           <h1>Loading your workspace</h1>
           <p className="muted">
             We are checking your session before opening the dashboard.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  if (initError) {
+    return (
+      <main className="screen shell-screen">
+        <section className="panel status-panel">
+          <p className="eyebrow">SyncKer</p>
+          <h1>We could not restore your session</h1>
+          <p className="muted">
+            {initError}
           </p>
         </section>
       </main>

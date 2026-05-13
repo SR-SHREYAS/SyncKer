@@ -44,6 +44,7 @@ export function LoginPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="you@example.com"
+            disabled={isSubmitting}
             required
           />
         </label>
@@ -55,6 +56,7 @@ export function LoginPage() {
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             placeholder="Minimum 8 characters"
+            disabled={isSubmitting}
             required
           />
         </label>

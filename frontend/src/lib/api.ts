@@ -37,11 +37,20 @@ export async function apiRequest<T>(
     requestHeaders.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  const response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
-    method,
-    headers: requestHeaders,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+      method,
+      headers: requestHeaders,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError(
+      "Network error. Please check your connection and backend server.",
+      0,
+    );
+  }
 
   if (!response.ok) {
     const errorPayload = (await tryReadJson(response)) as ErrorPayload | null;
@@ -53,7 +62,24 @@ export async function apiRequest<T>(
     throw new ApiError(message, response.status);
   }
 
-  return (await response.json()) as T;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const responseText = await response.text();
+
+  if (!responseText.trim()) {
+    return undefined as T;
+  }
+
+  try {
+    return JSON.parse(responseText) as T;
+  } catch {
+    throw new ApiError(
+      "Server returned an unexpected response format.",
+      response.status,
+    );
+  }
 }
 
 async function tryReadJson(response: Response): Promise<unknown | null> {
