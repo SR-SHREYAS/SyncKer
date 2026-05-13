@@ -14,10 +14,10 @@ import { clearStoredAccessToken, getStoredAccessToken, storeAccessToken } from "
 import { loginUser, registerUser } from "../services/authService";
 import { getCurrentUser } from "../services/userService";
 import type { AuthResponse, LoginRequest, RegisterRequest } from "../types/auth";
-import type { User } from "../types/user";
+import type { UserIdentity } from "../types/user";
 
 type AuthContextValue = {
-  currentUser: User | null;
+  currentUser: UserIdentity | null;
   isAuthenticated: boolean;
   isInitializing: boolean;
   initError: string | null;
@@ -51,7 +51,7 @@ function isAuthBootstrapFailure(error: unknown): boolean {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserIdentity | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -91,13 +91,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  async function completeAuthenticatedSession(accessToken: string): Promise<void> {
-    storeAccessToken(accessToken);
-    const user = await getCurrentUser();
+  async function completeAuthenticatedSession(authResponse: AuthResponse): Promise<void> {
+    storeAccessToken(authResponse.token.access_token);
 
     startTransition(() => {
       setInitError(null);
-      setCurrentUser(user);
+      setCurrentUser(authResponse.user);
     });
   }
 
@@ -109,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const authResponse = await requestAuth();
-      await completeAuthenticatedSession(authResponse.token.access_token);
+      await completeAuthenticatedSession(authResponse);
       return true;
     } catch (error) {
       if (isAuthBootstrapFailure(error)) {

@@ -25,7 +25,7 @@ export function RegisterPage() {
       });
 
       if (isSuccessful) {
-        navigate("/dashboard");
+        navigate("/dashboard", { replace: true });
       }
     } finally {
       setIsSubmitting(false);

@@ -1,9 +1,9 @@
-import { appConfig } from "./config";
+import { buildApiUrl } from "./config";
 import { getStoredAccessToken } from "./storage";
 
 type RequestOptions = {
   method?: string;
-  body?: unknown;
+  body?: BodyInit | object;
   headers?: HeadersInit;
 };
 
@@ -43,8 +43,9 @@ export async function apiRequest<T>(
   const accessToken = getStoredAccessToken();
   const requestHeaders = new Headers(headers);
   const isFormDataBody = body instanceof FormData;
+  const isStringBody = typeof body === "string";
 
-  if (body !== undefined && !isFormDataBody) {
+  if (body !== undefined && !isFormDataBody && !isStringBody) {
     requestHeaders.set("Content-Type", "application/json");
   }
 
@@ -55,7 +56,7 @@ export async function apiRequest<T>(
   let response: Response;
 
   try {
-    response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
+    response = await fetch(buildApiUrl(path), {
       method,
       headers: requestHeaders,
       body:
@@ -63,7 +64,9 @@ export async function apiRequest<T>(
           ? undefined
           : isFormDataBody
             ? body
-            : JSON.stringify(body),
+            : isStringBody
+              ? body
+              : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(
@@ -88,10 +91,15 @@ export async function apiRequest<T>(
     return undefined as T;
   }
 
+  const contentType = response.headers.get("content-type")?.toLowerCase() || "";
   const responseText = await response.text();
 
   if (!responseText.trim()) {
     return undefined as T;
+  }
+
+  if (!contentType.includes("application/json")) {
+    return responseText as T;
   }
 
   try {

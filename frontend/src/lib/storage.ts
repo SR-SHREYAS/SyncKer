@@ -1,26 +1,39 @@
-const ACCESS_TOKEN_KEY = "syncker.access_token";
+import { appConfig } from "./config";
+
+let cachedBrowserStorage: Storage | null | undefined;
+let didLogStorageAccessFailure = false;
 
 function getBrowserStorage(): Storage | null {
+  if (cachedBrowserStorage !== undefined) {
+    return cachedBrowserStorage;
+  }
+
   if (typeof window === "undefined" || !("localStorage" in window)) {
-    return null;
+    cachedBrowserStorage = null;
+    return cachedBrowserStorage;
   }
 
   try {
-    return window.localStorage;
+    cachedBrowserStorage = window.localStorage;
+    return cachedBrowserStorage;
   } catch (error) {
-    console.error("Failed to access browser localStorage", error);
-    return null;
+    if (!didLogStorageAccessFailure) {
+      console.error("Failed to access browser localStorage", error);
+      didLogStorageAccessFailure = true;
+    }
+    cachedBrowserStorage = null;
+    return cachedBrowserStorage;
   }
 }
 
 export function getStoredAccessToken(): string | null {
-  return getBrowserStorage()?.getItem(ACCESS_TOKEN_KEY) ?? null;
+  return getBrowserStorage()?.getItem(appConfig.accessTokenStorageKey) ?? null;
 }
 
 export function storeAccessToken(accessToken: string): void {
-  getBrowserStorage()?.setItem(ACCESS_TOKEN_KEY, accessToken);
+  getBrowserStorage()?.setItem(appConfig.accessTokenStorageKey, accessToken);
 }
 
 export function clearStoredAccessToken(): void {
-  getBrowserStorage()?.removeItem(ACCESS_TOKEN_KEY);
+  getBrowserStorage()?.removeItem(appConfig.accessTokenStorageKey);
 }

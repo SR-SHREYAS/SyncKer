@@ -1,16 +1,20 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../app/AuthContext";
 import { Layout } from "../components/Layout";
 import { PageHeader } from "../components/PageHeader";
 
 export function LoginPage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const { login, loginError } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const redirectPath =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
+    "/dashboard";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -23,7 +27,7 @@ export function LoginPage() {
       });
 
       if (isSuccessful) {
-        navigate("/dashboard");
+        navigate(redirectPath, { replace: true });
       }
     } finally {
       setIsSubmitting(false);

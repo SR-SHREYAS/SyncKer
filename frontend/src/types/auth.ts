@@ -1,9 +1,6 @@
-export type AuthUser = {
-  id: number;
-  email: string;
-  username: string;
-  is_active: boolean;
-};
+import type { UserIdentity } from "./user";
+
+export type AuthUser = UserIdentity;
 
 export type TokenResponse = {
   access_token: string;
