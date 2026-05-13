@@ -18,13 +18,15 @@ export function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      await register({
+      const isSuccessful = await register({
         email,
         username,
         password,
       });
 
-      navigate("/dashboard");
+      if (isSuccessful) {
+        navigate("/dashboard");
+      }
     } finally {
       setIsSubmitting(false);
     }

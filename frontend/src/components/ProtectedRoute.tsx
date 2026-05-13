@@ -20,7 +20,7 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  if (initError) {
+  if (initError && !isAuthenticated) {
     return (
       <main className="screen shell-screen">
         <section className="panel status-panel">

@@ -17,12 +17,14 @@ export function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      await login({
+      const isSuccessful = await login({
         email,
         password,
       });
 
-      navigate("/dashboard");
+      if (isSuccessful) {
+        navigate("/dashboard");
+      }
     } finally {
       setIsSubmitting(false);
     }

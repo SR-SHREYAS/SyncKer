@@ -21,8 +21,8 @@ type AuthContextValue = {
   initError: string | null;
   loginError: string | null;
   registerError: string | null;
-  login: (payload: LoginRequest) => Promise<void>;
-  register: (payload: RegisterRequest) => Promise<void>;
+  login: (payload: LoginRequest) => Promise<boolean>;
+  register: (payload: RegisterRequest) => Promise<boolean>;
   logout: () => void;
 };
 
@@ -38,6 +38,13 @@ function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong. Please try again.";
+}
+
+function isAuthBootstrapFailure(error: unknown): boolean {
+  return (
+    error instanceof ApiError &&
+    (error.statusCode === 401 || error.statusCode === 403)
+  );
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -63,10 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       })
       .catch((error: unknown) => {
-        clearStoredAccessToken();
         console.error("Failed to initialize current user during auth bootstrap", error);
 
+        if (isAuthBootstrapFailure(error)) {
+          clearStoredAccessToken();
+        }
+
         startTransition(() => {
+          if (isAuthBootstrapFailure(error)) {
+            setCurrentUser(null);
+          }
           setInitError(getErrorMessage(error));
         });
       })
@@ -75,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  async function login(payload: LoginRequest): Promise<void> {
+  async function login(payload: LoginRequest): Promise<boolean> {
     setLoginError(null);
 
     try {
@@ -87,14 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setInitError(null);
         setCurrentUser(user);
       });
+      return true;
     } catch (error) {
       clearStoredAccessToken();
       setLoginError(getErrorMessage(error));
-      throw error;
+      return false;
     }
   }
 
-  async function register(payload: RegisterRequest): Promise<void> {
+  async function register(payload: RegisterRequest): Promise<boolean> {
     setRegisterError(null);
 
     try {
@@ -106,10 +120,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setInitError(null);
         setCurrentUser(user);
       });
+      return true;
     } catch (error) {
       clearStoredAccessToken();
       setRegisterError(getErrorMessage(error));
-      throw error;
+      return false;
     }
   }
 

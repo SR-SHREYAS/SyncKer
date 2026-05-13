@@ -10,15 +10,29 @@ type RequestOptions = {
 type ErrorPayload = {
   detail?: string;
   message?: string;
+  code?: string;
+  [key: string]: unknown;
 };
 
 export class ApiError extends Error {
   statusCode: number;
+  requestPath: string;
+  requestMethod: string;
+  errorPayload: ErrorPayload | string | null;
 
-  constructor(message: string, statusCode: number) {
+  constructor(
+    message: string,
+    statusCode: number,
+    requestPath = "",
+    requestMethod = "GET",
+    errorPayload: ErrorPayload | string | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;
+    this.requestPath = requestPath;
+    this.requestMethod = requestMethod;
+    this.errorPayload = errorPayload;
   }
 }
 
@@ -49,6 +63,8 @@ export async function apiRequest<T>(
     throw new ApiError(
       "Network error. Please check your connection and backend server.",
       0,
+      path,
+      method,
     );
   }
 
@@ -59,7 +75,7 @@ export async function apiRequest<T>(
       errorPayload?.message ||
       "Request failed. Please try again.";
 
-    throw new ApiError(message, response.status);
+    throw new ApiError(message, response.status, path, method, errorPayload);
   }
 
   if (response.status === 204) {
@@ -78,6 +94,9 @@ export async function apiRequest<T>(
     throw new ApiError(
       "Server returned an unexpected response format.",
       response.status,
+      path,
+      method,
+      responseText,
     );
   }
 }

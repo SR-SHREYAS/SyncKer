@@ -5,7 +5,12 @@ function getBrowserStorage(): Storage | null {
     return null;
   }
 
-  return window.localStorage;
+  try {
+    return window.localStorage;
+  } catch (error) {
+    console.error("Failed to access browser localStorage", error);
+    return null;
+  }
 }
 
 export function getStoredAccessToken(): string | null {
