@@ -102,7 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return true;
     } catch (error) {
-      clearStoredAccessToken();
+      if (isAuthBootstrapFailure(error)) {
+        clearStoredAccessToken();
+      }
       setLoginError(getErrorMessage(error));
       return false;
     }
@@ -122,7 +124,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       return true;
     } catch (error) {
-      clearStoredAccessToken();
+      if (isAuthBootstrapFailure(error)) {
+        clearStoredAccessToken();
+      }
       setRegisterError(getErrorMessage(error));
       return false;
     }

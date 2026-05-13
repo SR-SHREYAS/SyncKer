@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import { useAuth } from "../app/AuthContext";
@@ -29,6 +29,14 @@ export function ProtectedRoute({ children }: { children: ReactNode }) {
           <p className="muted">
             {initError}
           </p>
+          <div className="status-actions">
+            <Link className="primary-button" to="/login">
+              Go to login
+            </Link>
+            <Link className="secondary-button" to="/">
+              Back to home
+            </Link>
+          </div>
         </section>
       </main>
     );

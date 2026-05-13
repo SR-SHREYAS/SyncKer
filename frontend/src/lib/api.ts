@@ -42,8 +42,9 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const accessToken = getStoredAccessToken();
   const requestHeaders = new Headers(headers);
+  const isFormDataBody = body instanceof FormData;
 
-  if (body !== undefined) {
+  if (body !== undefined && !isFormDataBody) {
     requestHeaders.set("Content-Type", "application/json");
   }
 
@@ -57,7 +58,12 @@ export async function apiRequest<T>(
     response = await fetch(`${appConfig.apiBaseUrl}${path}`, {
       method,
       headers: requestHeaders,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body:
+        body === undefined
+          ? undefined
+          : isFormDataBody
+            ? body
+            : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(

@@ -249,6 +249,13 @@ input {
   margin: 12vh auto 0;
 }
 
+.status-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
 .dashboard-topbar {
   margin-bottom: 24px;
 }
