@@ -26,7 +26,7 @@ export function DashboardPage() {
 
   function handleLogout(): void {
     logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   }
 
   return (

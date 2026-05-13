@@ -68,12 +68,15 @@ export async function apiRequest<T>(
               ? body
               : JSON.stringify(body),
     });
-  } catch {
+  } catch (error) {
     throw new ApiError(
-      "Network error. Please check your connection and backend server.",
+      error instanceof Error
+        ? `Network error. ${error.message}`
+        : "Network error. Please check your connection and backend server.",
       0,
       path,
       method,
+      error instanceof Error ? error.message : null,
     );
   }
 
