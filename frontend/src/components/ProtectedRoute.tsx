@@ -2,43 +2,36 @@ import { Link, Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
 
 import { useAuth } from "../app/AuthContext";
+import { AuthStatusShell } from "./AuthStatusShell";
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
   const { initError, isAuthenticated, isInitializing } = useAuth();
 
   if (isInitializing) {
     return (
-      <main className="screen shell-screen">
-        <section className="panel status-panel">
-          <p className="eyebrow">SyncKer</p>
-          <h1>Loading your workspace</h1>
-          <p className="muted">
-            We are checking your session before opening the dashboard.
-          </p>
-        </section>
-      </main>
+      <AuthStatusShell
+        title="Loading your workspace"
+        description="We are checking your session before opening the dashboard."
+      />
     );
   }
 
   if (initError && !isAuthenticated) {
     return (
-      <main className="screen shell-screen">
-        <section className="panel status-panel">
-          <p className="eyebrow">SyncKer</p>
-          <h1>We could not restore your session</h1>
-          <p className="muted">
-            {initError}
-          </p>
-          <div className="status-actions">
+      <AuthStatusShell
+        title="We could not restore your session"
+        description={initError}
+        actions={
+          <>
             <Link className="primary-button" to="/login">
               Go to login
             </Link>
             <Link className="secondary-button" to="/">
               Back to home
             </Link>
-          </div>
-        </section>
-      </main>
+          </>
+        }
+      />
     );
   }
 

@@ -4,14 +4,16 @@ import {
   useContext,
   useEffect,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 
 import { ApiError } from "../lib/api";
 import { clearStoredAccessToken, getStoredAccessToken, storeAccessToken } from "../lib/storage";
 import { loginUser, registerUser } from "../services/authService";
 import { getCurrentUser } from "../services/userService";
-import type { LoginRequest, RegisterRequest } from "../types/auth";
+import type { AuthResponse, LoginRequest, RegisterRequest } from "../types/auth";
 import type { User } from "../types/user";
 
 type AuthContextValue = {
@@ -27,6 +29,7 @@ type AuthContextValue = {
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+type ErrorStateSetter = Dispatch<SetStateAction<string | null>>;
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof ApiError) {
@@ -88,48 +91,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
-  async function login(payload: LoginRequest): Promise<boolean> {
-    setLoginError(null);
+  async function completeAuthenticatedSession(accessToken: string): Promise<void> {
+    storeAccessToken(accessToken);
+    const user = await getCurrentUser();
+
+    startTransition(() => {
+      setInitError(null);
+      setCurrentUser(user);
+    });
+  }
+
+  async function runAuthFlow(
+    requestAuth: () => Promise<AuthResponse>,
+    setError: ErrorStateSetter,
+  ): Promise<boolean> {
+    setError(null);
 
     try {
-      const authResponse = await loginUser(payload);
-      storeAccessToken(authResponse.token.access_token);
-      const user = await getCurrentUser();
-
-      startTransition(() => {
-        setInitError(null);
-        setCurrentUser(user);
-      });
+      const authResponse = await requestAuth();
+      await completeAuthenticatedSession(authResponse.token.access_token);
       return true;
     } catch (error) {
       if (isAuthBootstrapFailure(error)) {
         clearStoredAccessToken();
       }
-      setLoginError(getErrorMessage(error));
+      setError(getErrorMessage(error));
       return false;
     }
   }
 
+  async function login(payload: LoginRequest): Promise<boolean> {
+    return runAuthFlow(() => loginUser(payload), setLoginError);
+  }
+
   async function register(payload: RegisterRequest): Promise<boolean> {
-    setRegisterError(null);
-
-    try {
-      const authResponse = await registerUser(payload);
-      storeAccessToken(authResponse.token.access_token);
-      const user = await getCurrentUser();
-
-      startTransition(() => {
-        setInitError(null);
-        setCurrentUser(user);
-      });
-      return true;
-    } catch (error) {
-      if (isAuthBootstrapFailure(error)) {
-        clearStoredAccessToken();
-      }
-      setRegisterError(getErrorMessage(error));
-      return false;
-    }
+    return runAuthFlow(() => registerUser(payload), setRegisterError);
   }
 
   function logout(): void {
