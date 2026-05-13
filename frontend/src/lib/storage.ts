@@ -3,6 +3,9 @@ import { appConfig } from "./config";
 let cachedBrowserStorage: Storage | null | undefined;
 let didLogStorageAccessFailure = false;
 
+// MVP note:
+// Access token storage stays behind this module so we can later switch the
+// project to HttpOnly cookie-based auth without rewriting every caller.
 function getBrowserStorage(): Storage | null {
   if (cachedBrowserStorage !== undefined) {
     return cachedBrowserStorage;

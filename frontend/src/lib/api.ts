@@ -118,7 +118,13 @@ export async function apiRequest<T>(
   }
 
   if (!contentType.includes("application/json")) {
-    return responseText as T;
+    throw new ApiError(
+      "Server returned an unexpected non-JSON success response.",
+      response.status,
+      path,
+      method,
+      responseText,
+    );
   }
 
   try {

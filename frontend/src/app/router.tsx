@@ -4,6 +4,7 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { DashboardPage } from "../pages/DashboardPage";
 import { LandingPage } from "../pages/LandingPage";
 import { LoginPage } from "../pages/LoginPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
 import { RegisterPage } from "../pages/RegisterPage";
 
 export const router = createBrowserRouter([
@@ -26,5 +27,9 @@ export const router = createBrowserRouter([
         <DashboardPage />
       </ProtectedRoute>
     ),
+  },
+  {
+    path: "*",
+    element: <NotFoundPage />,
   },
 ]);
