@@ -45,6 +45,15 @@ type TaskSummaryRowProps = {
   onDelete: (taskId: number) => Promise<void>;
 };
 
+function formatTaskLabel(label: string): string {
+  return label
+    .split("_")
+    .map((word) =>
+      word ? word[0].toUpperCase() + word.slice(1).toLowerCase() : "",
+    )
+    .join(" ");
+}
+
 function TaskSummaryRow({
   task,
   isDeleting,
@@ -57,7 +66,8 @@ function TaskSummaryRow({
         <div>
           <h3>{task.title}</h3>
           <p className="muted">
-            {task.priority} priority · {task.status.replace("_", " ")} ·{" "}
+            {formatTaskLabel(task.priority)} priority ·{" "}
+            {formatTaskLabel(task.status)} ·{" "}
             {task.estimated_minutes} min
           </p>
         </div>

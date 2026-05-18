@@ -75,6 +75,21 @@ export function TaskForm({
       return;
     }
 
+    if (!Number.isFinite(formValues.estimated_minutes)) {
+      setValidationError("Estimated minutes must be a valid number.");
+      return;
+    }
+
+    if (
+      formValues.estimated_minutes < 15 ||
+      formValues.estimated_minutes > 1440
+    ) {
+      setValidationError(
+        "Estimated minutes must be between 15 and 1440.",
+      );
+      return;
+    }
+
     const normalizedDeadlineAt = toIsoOrNull(formValues.deadline_at);
     const normalizedPlannedStartAt = toIsoOrNull(formValues.planned_start_at);
     const normalizedPlannedEndAt = toIsoOrNull(formValues.planned_end_at);
