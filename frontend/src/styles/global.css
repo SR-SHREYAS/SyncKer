@@ -274,7 +274,7 @@ textarea {
 }
 
 .dashboard-grid {
-  grid-template-columns: minmax(0, 1.8fr) repeat(2, minmax(260px, 1fr));
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
   align-items: start;
 }
 
@@ -283,6 +283,12 @@ textarea {
 }
 
 .dashboard-primary-column {
+  min-width: 0;
+}
+
+.dashboard-secondary-column {
+  display: grid;
+  gap: 20px;
   min-width: 0;
 }
 
