@@ -27,7 +27,9 @@ a {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -180,9 +182,20 @@ input {
   background: #fffefa;
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
   outline: 2px solid rgba(198, 132, 28, 0.3);
   border-color: #c6841c;
+}
+
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(17, 32, 21, 0.14);
+  background: #fffefa;
 }
 
 .primary-button,
@@ -261,17 +274,131 @@ input {
 }
 
 .dashboard-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
+  align-items: start;
 }
 
 .dashboard-card {
   min-height: 220px;
 }
 
+.dashboard-primary-column {
+  min-width: 0;
+}
+
+.dashboard-secondary-column {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.personal-timetable-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.95fr) minmax(0, 1.05fr);
+  gap: 20px;
+}
+
+.personal-form-panel,
+.personal-list-panel {
+  min-width: 0;
+}
+
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.section-heading h2,
+.task-card h3 {
+  margin: 0;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.empty-state {
+  padding: 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 32, 21, 0.08);
+}
+
+.empty-state h3 {
+  margin-top: 0;
+}
+
+.task-list {
+  display: grid;
+  gap: 16px;
+}
+
+.task-card {
+  padding: 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(17, 32, 21, 0.08);
+}
+
+.task-card-top,
+.task-card-actions,
+.task-meta-grid {
+  display: flex;
+  gap: 12px;
+}
+
+.task-card-top {
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.task-card-actions {
+  flex-wrap: wrap;
+}
+
+.task-meta-grid {
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.task-meta-grid div {
+  min-width: 140px;
+  display: grid;
+  gap: 2px;
+}
+
+.task-meta-grid span {
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8b5e24;
+}
+
+.task-description {
+  margin: 0;
+  color: #425444;
+}
+
+.destructive-button {
+  color: #7b1f1f;
+  border-color: rgba(123, 31, 31, 0.2);
+}
+
 @media (max-width: 960px) {
   .hero-grid,
   .dashboard-grid,
   .shell-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .personal-timetable-grid,
+  .field-grid {
     grid-template-columns: 1fr;
   }
 

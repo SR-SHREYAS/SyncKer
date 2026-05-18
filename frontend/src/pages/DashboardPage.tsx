@@ -1,24 +1,7 @@
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../app/AuthContext";
-
-const dashboardSections = [
-  {
-    title: "Personal Timetable",
-    description:
-      "This panel will show the authenticated user's planned tasks and time blocks in the next branch.",
-  },
-  {
-    title: "Team Timetable",
-    description:
-      "This area will render the shared team board once we wire the team workspace APIs.",
-  },
-  {
-    title: "Collaboration Panel",
-    description:
-      "This panel will generate and apply AI-assisted scheduling suggestions after the shell foundation is merged.",
-  },
-];
+import { PersonalTimetablePanel } from "../components/PersonalTimetablePanel";
 
 export function DashboardPage() {
   const navigate = useNavigate();
@@ -44,12 +27,27 @@ export function DashboardPage() {
       </section>
 
       <section className="dashboard-grid">
-        {dashboardSections.map((section) => (
-          <article className="panel dashboard-card" key={section.title}>
-            <h2>{section.title}</h2>
-            <p className="muted">{section.description}</p>
+        <div className="dashboard-primary-column">
+          <PersonalTimetablePanel />
+        </div>
+
+        <div className="dashboard-secondary-column">
+          <article className="panel dashboard-card">
+            <h2>Team Timetable</h2>
+            <p className="muted">
+              This area will render the shared team board once we wire the team
+              workspace APIs.
+            </p>
           </article>
-        ))}
+
+          <article className="panel dashboard-card">
+            <h2>Collaboration Panel</h2>
+            <p className="muted">
+              This panel will generate and apply AI-assisted scheduling
+              suggestions after the shell foundation is merged.
+            </p>
+          </article>
+        </div>
       </section>
     </main>
   );
