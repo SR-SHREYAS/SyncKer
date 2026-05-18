@@ -1,13 +1,9 @@
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../app/AuthContext";
+import { PersonalTimetablePanel } from "../components/PersonalTimetablePanel";
 
 const dashboardSections = [
-  {
-    title: "Personal Timetable",
-    description:
-      "This panel will show the authenticated user's planned tasks and time blocks in the next branch.",
-  },
   {
     title: "Team Timetable",
     description:
@@ -44,6 +40,10 @@ export function DashboardPage() {
       </section>
 
       <section className="dashboard-grid">
+        <div className="dashboard-primary-column">
+          <PersonalTimetablePanel />
+        </div>
+
         {dashboardSections.map((section) => (
           <article className="panel dashboard-card" key={section.title}>
             <h2>{section.title}</h2>
