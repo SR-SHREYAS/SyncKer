@@ -63,6 +63,13 @@ export function TaskForm({
     event.preventDefault();
     setValidationError(null);
 
+    const trimmedTitle = formValues.title.trim();
+
+    if (trimmedTitle.length < 2) {
+      setValidationError("Title must be at least 2 characters.");
+      return;
+    }
+
     if (formValues.estimated_minutes === "") {
       setValidationError("Estimated minutes is required.");
       return;
@@ -87,8 +94,18 @@ export function TaskForm({
       return;
     }
 
+    if (normalizedPlannedStartAt && normalizedPlannedEndAt) {
+      const plannedStartDate = new Date(normalizedPlannedStartAt);
+      const plannedEndDate = new Date(normalizedPlannedEndAt);
+
+      if (plannedEndDate.getTime() < plannedStartDate.getTime()) {
+        setValidationError("Planned end must be after planned start.");
+        return;
+      }
+    }
+
     await onSubmit({
-      title: formValues.title.trim(),
+      title: trimmedTitle,
       description: formValues.description.trim() || null,
       priority: formValues.priority,
       status: formValues.status,
