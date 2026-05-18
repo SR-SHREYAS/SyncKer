@@ -34,7 +34,7 @@ export type TaskFormValues = {
   description: string;
   priority: TaskPriority;
   status: TaskStatus;
-  estimated_minutes: number;
+  estimated_minutes: number | "";
   deadline_at: string;
   planned_start_at: string;
   planned_end_at: string;

@@ -1,11 +1,24 @@
+// Frontend convention:
+// backend timestamps are treated as ISO datetime strings and rendered in the
+// user's local timezone for both form editing and display labels.
+function parseDateValue(value: string): Date | null {
+  const parsedDate = new Date(value);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate;
+}
+
 export function toDatetimeLocalValue(value: string | null): string {
   if (!value) {
     return "";
   }
 
-  const date = new Date(value);
+  const date = parseDateValue(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date) {
     return "";
   }
 
@@ -19,7 +32,7 @@ export function toIsoOrNull(value: string): string | null {
     return null;
   }
 
-  return new Date(value).toISOString();
+  return parseDateValue(value)?.toISOString() ?? null;
 }
 
 export function formatDateTimeLabel(value: string | null): string {
@@ -27,9 +40,9 @@ export function formatDateTimeLabel(value: string | null): string {
     return "Not set";
   }
 
-  const date = new Date(value);
+  const date = parseDateValue(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!date) {
     return "Invalid date";
   }
 

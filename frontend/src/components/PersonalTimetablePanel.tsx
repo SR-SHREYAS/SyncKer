@@ -101,6 +101,7 @@ export function PersonalTimetablePanel() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -127,6 +128,7 @@ export function PersonalTimetablePanel() {
 
   async function handleSubmit(payload: TaskPayload): Promise<void> {
     setSubmitError(null);
+    setDeleteError(null);
     setIsSubmitting(true);
 
     try {
@@ -150,6 +152,7 @@ export function PersonalTimetablePanel() {
   }
 
   async function handleDelete(taskId: number): Promise<void> {
+    setDeleteError(null);
     setDeletingTaskId(taskId);
 
     try {
@@ -162,7 +165,7 @@ export function PersonalTimetablePanel() {
         setEditingTask(null);
       }
     } catch (error) {
-      setLoadError(getTaskErrorMessage(error));
+      setDeleteError(getTaskErrorMessage(error));
     } finally {
       setDeletingTaskId(null);
     }
@@ -193,6 +196,7 @@ export function PersonalTimetablePanel() {
         </div>
 
         {loadError ? <p className="form-error">{loadError}</p> : null}
+        {deleteError ? <p className="form-error">{deleteError}</p> : null}
 
         {isLoading ? (
           <div className="empty-state">

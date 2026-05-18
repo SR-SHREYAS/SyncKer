@@ -52,23 +52,50 @@ export function TaskForm({
   const [formValues, setFormValues] = useState<TaskFormValues>(
     buildFormValues(initialTask),
   );
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     setFormValues(buildFormValues(initialTask));
+    setValidationError(null);
   }, [initialTask]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setValidationError(null);
+
+    if (formValues.estimated_minutes === "") {
+      setValidationError("Estimated minutes is required.");
+      return;
+    }
+
+    const normalizedDeadlineAt = toIsoOrNull(formValues.deadline_at);
+    const normalizedPlannedStartAt = toIsoOrNull(formValues.planned_start_at);
+    const normalizedPlannedEndAt = toIsoOrNull(formValues.planned_end_at);
+
+    if (formValues.deadline_at.trim() && normalizedDeadlineAt === null) {
+      setValidationError("Deadline must be a valid date and time.");
+      return;
+    }
+
+    if (formValues.planned_start_at.trim() && normalizedPlannedStartAt === null) {
+      setValidationError("Planned start must be a valid date and time.");
+      return;
+    }
+
+    if (formValues.planned_end_at.trim() && normalizedPlannedEndAt === null) {
+      setValidationError("Planned end must be a valid date and time.");
+      return;
+    }
 
     await onSubmit({
       title: formValues.title.trim(),
       description: formValues.description.trim() || null,
       priority: formValues.priority,
       status: formValues.status,
-      estimated_minutes: Number(formValues.estimated_minutes),
-      deadline_at: toIsoOrNull(formValues.deadline_at),
-      planned_start_at: toIsoOrNull(formValues.planned_start_at),
-      planned_end_at: toIsoOrNull(formValues.planned_end_at),
+      estimated_minutes: formValues.estimated_minutes,
+      deadline_at: normalizedDeadlineAt,
+      planned_start_at: normalizedPlannedStartAt,
+      planned_end_at: normalizedPlannedEndAt,
       skill_id: null,
     });
 
@@ -182,7 +209,10 @@ export function TaskForm({
           onChange={(event) =>
             setFormValues((currentValues) => ({
               ...currentValues,
-              estimated_minutes: Number(event.target.value),
+              estimated_minutes:
+                event.target.value === ""
+                  ? ""
+                  : Number(event.target.value),
             }))
           }
           disabled={isSubmitting}
@@ -240,7 +270,8 @@ export function TaskForm({
         />
       </label>
 
-      {submitError ? <p className="form-error">{submitError}</p> : null}
+      {validationError ? <p className="form-error">{validationError}</p> : null}
+      {!validationError && submitError ? <p className="form-error">{submitError}</p> : null}
 
       <button className="primary-button wide-button" disabled={isSubmitting} type="submit">
         {isSubmitting
